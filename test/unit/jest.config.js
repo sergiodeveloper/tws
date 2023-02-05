@@ -2,7 +2,7 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  reporters: ['default', 'jest-junit'],
+  reporters: ['default'],
   collectCoverage: true,
   coverageReporters: ['text'],
   coverageThreshold: {
@@ -13,6 +13,7 @@ module.exports = {
   collectCoverageFrom: [
     'src/**/*.{ts,json}',
   ],
+  testTimeout: 50,
   testMatch: [
     '**/test/unit/**/*.spec.ts',
   ],

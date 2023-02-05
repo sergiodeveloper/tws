@@ -3,7 +3,6 @@
   "ignore": [
     "node_modules/**/*.*",
     ".git/**/*.*",
-    "reports/**/*.*",
     "src/**/*.*"
   ],
   "minLines": 6,

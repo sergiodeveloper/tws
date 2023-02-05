@@ -22,7 +22,5 @@ jobs:
       - name: Unit test
         run: npm run unit-test
 
-      - run: rm -rf reports
-
       - name: Integration test
         run: npm run integration-test

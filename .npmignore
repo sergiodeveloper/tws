@@ -1,7 +1,6 @@
 !dist/
 node_modules/
 test/
-reports/
 .vscode/
 *.trc
 tsconfig.json
