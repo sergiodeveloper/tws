@@ -1,7 +1,6 @@
 # TWS - Type-Safe Web Server Framework
 
-[![Unit Test](https://github.com/sergiodeveloper/tws/actions/workflows/unit-test.yml/badge.svg)](https://github.com/sergiodeveloper/tws/actions/workflows/unit-test.yml)
-[![Integration Test](https://github.com/sergiodeveloper/tws/actions/workflows/integration-test.yml/badge.svg)](https://github.com/sergiodeveloper/tws/actions/workflows/integration-test.yml)
+[![Test](https://github.com/sergiodeveloper/tws/actions/workflows/test.yml/badge.svg)](https://github.com/sergiodeveloper/tws/actions/workflows/test.yml)
 
 TWS is a framework built with TypeScript to create type-safe web servers.
 
