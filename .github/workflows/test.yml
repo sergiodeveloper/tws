@@ -1,0 +1,28 @@
+name: Test
+on: [push]
+jobs:
+  Test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18.x'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit test
+        run: npm run unit-test
+
+      - run: rm -rf reports
+
+      - name: Integration test
+        run: npm run integration-test
