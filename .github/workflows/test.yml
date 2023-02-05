@@ -1,0 +1,44 @@
+name: Unit Test
+on: [push]
+jobs:
+  Unit-Test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18.x'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit test
+        run: npm run unit-test
+
+      - name: Unit test report
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Unit test report
+          path: reports/test-result.xml
+          reporter: java-junit
+
+      - run: rm -rf reports
+
+      - name: Integration test
+        run: npm run integration-test
+
+      - name: Integration test report
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Integration test report
+          path: reports/test-result.xml
+          reporter: java-junit

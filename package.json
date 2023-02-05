@@ -1,0 +1,47 @@
+{
+  "version": "0.1.0",
+  "name": "@tws-js/server",
+  "description": "Type-Safe Web Server Framework",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "npm run unit-test && npm run integration-test",
+    "unit-test": "NODE_OPTIONS=--enable-source-maps jest --config=test/unit/jest.config.js",
+    "integration-test": "NODE_OPTIONS=--enable-source-maps jest --config=test/integration/jest.config.js",
+    "lint": "npm run twly && npm run eslint && npx tsc --noEmit",
+    "format": "eslint src test --fix",
+    "start": "nodemon --exec ts-node index.ts",
+    "build": "rm -rf dist && tsc",
+    "twly": "npx twly -t .trc && npx twly -t test/.trc",
+    "eslint": "npx eslint src test"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.17",
+    "@types/jest": "^29.4.0",
+    "@typescript-eslint/eslint-plugin": "^5.50.0",
+    "@typescript-eslint/parser": "^5.50.0",
+    "eslint": "^8.33.0",
+    "eslint-config-prettier": "^8.6.0",
+    "eslint-import-resolver-typescript": "^3.5.3",
+    "eslint-plugin-import": "^2.27.5",
+    "eslint-plugin-prettier": "^4.2.1",
+    "eslint-plugin-sonarjs": "^0.18.0",
+    "jest": "^29.4.1",
+    "jest-junit": "^15.0.0",
+    "nodemon": "^2.0.20",
+    "ts-jest": "^29.0.5",
+    "ts-node": "^10.9.1",
+    "twly": "^4.0.4",
+    "typescript": "^4.9.5"
+  },
+  "nodemonConfig": {
+    "ext": "ts,js,json"
+  },
+  "jest-junit": {
+    "outputDirectory": "reports",
+    "outputName": "test-result.xml"
+  }
+}
