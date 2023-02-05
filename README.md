@@ -5,6 +5,8 @@
 
 TWS is a framework built with TypeScript to create type-safe web servers.
 
+✅ 100% code coverage
+
 ## Usage
 
 ### Installation

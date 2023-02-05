@@ -6,8 +6,8 @@
   "main": "dist/index.js",
   "scripts": {
     "test": "npm run unit-test && npm run integration-test",
-    "unit-test": "NODE_OPTIONS=--enable-source-maps jest --config=test/unit/jest.config.js",
-    "integration-test": "NODE_OPTIONS=--enable-source-maps jest --config=test/integration/jest.config.js",
+    "unit-test": "NODE_OPTIONS=--enable-source-maps jest --config=jest-unit.config.js",
+    "integration-test": "NODE_OPTIONS=--enable-source-maps jest --config=jest-integration.config.js",
     "lint": "npm run twly && npm run eslint && npx tsc --noEmit",
     "format": "eslint src test --fix",
     "start": "nodemon --exec ts-node index.ts",
