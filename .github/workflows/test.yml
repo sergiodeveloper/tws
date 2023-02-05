@@ -1,7 +1,7 @@
-name: Unit Test
+name: Test
 on: [push]
 jobs:
-  Unit-Test:
+  Test:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -22,23 +22,7 @@ jobs:
       - name: Unit test
         run: npm run unit-test
 
-      - name: Unit test report
-        uses: dorny/test-reporter@v1
-        if: always()
-        with:
-          name: Unit test report
-          path: reports/test-result.xml
-          reporter: java-junit
-
       - run: rm -rf reports
 
       - name: Integration test
         run: npm run integration-test
-
-      - name: Integration test report
-        uses: dorny/test-reporter@v1
-        if: always()
-        with:
-          name: Integration test report
-          path: reports/test-result.xml
-          reporter: java-junit
