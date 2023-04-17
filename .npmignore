@@ -1,8 +1,11 @@
+.github/
+.vscode
 !dist/
 node_modules/
+src/
 test/
-.vscode/
-*.trc
-tsconfig.json
 .eslintrc.js
-.github
+.trc
+jest.config.js
+package-lock.json
+tsconfig.json

@@ -1,16 +1,18 @@
 // Helpers
 
-import { Validation } from './validation';
+import { Validation, ValidationError } from './validation';
 
 type DefaultValueType<T> = T extends PrimitiveType<PrimitiveTypeName> ? T : undefined;
 
 // Primitive types
 
-export type PrimitiveTypeName = 'string' | 'number' | 'boolean';
+export type PrimitiveTypeName = 'string' | 'int' | 'float' | 'boolean';
 
 export type PrimitiveType<T extends PrimitiveTypeName> = T extends 'string'
   ? string
-  : T extends 'number'
+  : T extends 'int'
+  ? number
+  : T extends 'float'
   ? number
   : T extends 'boolean'
   ? boolean
@@ -20,12 +22,13 @@ export type PrimitiveType<T extends PrimitiveTypeName> = T extends 'string'
 
 export type PrimitiveTypeDefinition = {
   type: PrimitiveTypeName;
+  title?: string;
   description?: string;
   required?: boolean;
   defaultValue?: PrimitiveType<PrimitiveTypeName>;
 };
 
-export type ResolverPrimitiveType<T extends PrimitiveTypeDefinition> = T['required'] extends false
+export type HandlerPrimitiveType<T extends PrimitiveTypeDefinition> = T['required'] extends false
   ? PrimitiveType<T['type']> | DefaultValueType<T['defaultValue']>
   : PrimitiveType<T['type']>;
 
@@ -33,165 +36,321 @@ export type InvocationPrimitiveType<T extends PrimitiveTypeDefinition> = T['requ
   ? PrimitiveType<T['type']> | undefined
   : PrimitiveType<T['type']>;
 
+// Enum input types
+
+export type EnumTypeDefinition = {
+  type: 'enum';
+  title?: string;
+  description?: string;
+  required?: boolean;
+  defaultValue?: string;
+  values: {
+    [name: string]: {
+      title?: string;
+      description?: string;
+    };
+  };
+};
+
+export type HandlerEnumType<T extends EnumTypeDefinition> = T['required'] extends false
+  ? keyof T['values'] | DefaultValueType<T['defaultValue']>
+  : keyof T['values'];
+// ? T['values'] | (T['defaultValue'] extends string ? T['defaultValue'] : never)
+// : T['values'];
+
+export type InvocationEnumType<T extends EnumTypeDefinition> = T['required'] extends false
+  ? keyof T['values'] | undefined
+  : keyof T['values'];
+// ? T['values'] | undefined
+// : T['values'];
+
 // Object input types
 
 export type ObjectTypeDefinition = {
   type: 'object';
+  title?: string;
   description?: string;
   required?: boolean;
   properties: {
     [name: string]:
       | PrimitiveTypeDefinition
-      | [PrimitiveTypeDefinition]
       | ObjectTypeDefinition
-      | [ObjectTypeDefinition];
+      | ArrayTypeDefinition
+      | EnumTypeDefinition;
   };
 };
 
-export type ResolverObjectType<T extends ObjectTypeDefinition> = {
-  [field in keyof T['properties']]: T['properties'][field] extends PrimitiveTypeDefinition
-    ? ResolverPrimitiveType<T['properties'][field]>
-    : T['properties'][field] extends [PrimitiveTypeDefinition]
-    ? ResolverPrimitiveType<T['properties'][field][0]>[]
-    : T['properties'][field] extends ObjectTypeDefinition & { required: false }
-    ? ResolverObjectType<T['properties'][field]> | undefined
-    : T['properties'][field] extends ObjectTypeDefinition
-    ? ResolverObjectType<T['properties'][field]>
-    : T['properties'][field] extends [ObjectTypeDefinition & { required: false }]
-    ? ResolverObjectType<T['properties'][field][0]>[] | undefined
-    : T['properties'][field] extends [ObjectTypeDefinition]
-    ? ResolverObjectType<T['properties'][field][0]>[]
-    : never;
+export type HandlerObjectType<T extends ObjectTypeDefinition> = T['required'] extends false
+  ?
+      | {
+          [field in keyof T['properties']]: T['properties'][field] extends PrimitiveTypeDefinition
+            ? HandlerPrimitiveType<T['properties'][field]>
+            : T['properties'][field] extends ArrayTypeDefinition
+            ? HandlerArrayType<T['properties'][field]>
+            : T['properties'][field] extends ObjectTypeDefinition
+            ? HandlerObjectType<T['properties'][field]>
+            : T['properties'][field] extends EnumTypeDefinition
+            ? HandlerEnumType<T['properties'][field]>
+            : never;
+        }
+      | undefined
+  : {
+      [field in keyof T['properties']]: T['properties'][field] extends PrimitiveTypeDefinition
+        ? HandlerPrimitiveType<T['properties'][field]>
+        : T['properties'][field] extends ArrayTypeDefinition
+        ? HandlerArrayType<T['properties'][field]>
+        : T['properties'][field] extends ObjectTypeDefinition
+        ? HandlerObjectType<T['properties'][field]>
+        : T['properties'][field] extends EnumTypeDefinition
+        ? HandlerEnumType<T['properties'][field]>
+        : never;
+    };
+
+export type InvocationObjectType<T extends ObjectTypeDefinition> = T['required'] extends false
+  ?
+      | {
+          [field in keyof T['properties']]: T['properties'][field] extends PrimitiveTypeDefinition
+            ? InvocationPrimitiveType<T['properties'][field]>
+            : T['properties'][field] extends ArrayTypeDefinition
+            ? InvocationArrayType<T['properties'][field]>
+            : T['properties'][field] extends ObjectTypeDefinition
+            ? InvocationObjectType<T['properties'][field]>
+            : T['properties'][field] extends EnumTypeDefinition
+            ? InvocationEnumType<T['properties'][field]>
+            : never;
+        }
+      | undefined
+  : {
+      [field in keyof T['properties']]: T['properties'][field] extends PrimitiveTypeDefinition
+        ? InvocationPrimitiveType<T['properties'][field]>
+        : T['properties'][field] extends ArrayTypeDefinition
+        ? InvocationArrayType<T['properties'][field]>
+        : T['properties'][field] extends ObjectTypeDefinition
+        ? InvocationObjectType<T['properties'][field]>
+        : T['properties'][field] extends EnumTypeDefinition
+        ? InvocationEnumType<T['properties'][field]>
+        : never;
+    };
+
+// Array input types
+
+export type ArrayTypeDefinition = {
+  type: 'array';
+  title?: string;
+  description?: string;
+  item: PrimitiveTypeDefinition | ObjectTypeDefinition | ArrayTypeDefinition | EnumTypeDefinition;
 };
 
-export type InvocationObjectType<T extends ObjectTypeDefinition> = {
-  [field in keyof T['properties']]: T['properties'][field] extends PrimitiveTypeDefinition
-    ? InvocationPrimitiveType<T['properties'][field]>
-    : T['properties'][field] extends [PrimitiveTypeDefinition]
-    ? InvocationPrimitiveType<T['properties'][field][0]>[]
-    : T['properties'][field] extends ObjectTypeDefinition & { required: false }
-    ? InvocationObjectType<T['properties'][field]> | undefined
-    : T['properties'][field] extends ObjectTypeDefinition
-    ? InvocationObjectType<T['properties'][field]>
-    : T['properties'][field] extends [ObjectTypeDefinition & { required: false }]
-    ? InvocationObjectType<T['properties'][field][0]>[] | undefined
-    : T['properties'][field] extends [ObjectTypeDefinition]
-    ? InvocationObjectType<T['properties'][field][0]>[]
+export type HandlerArrayType<T extends ArrayTypeDefinition> =
+  T['item'] extends PrimitiveTypeDefinition
+    ? HandlerPrimitiveType<T['item']>[]
+    : T['item'] extends ObjectTypeDefinition
+    ? HandlerObjectType<T['item']>[]
+    : T['item'] extends ArrayTypeDefinition
+    ? HandlerArrayType<T['item']>[]
+    : T['item'] extends EnumTypeDefinition
+    ? HandlerEnumType<T['item']>[]
     : never;
-};
+
+export type InvocationArrayType<T extends ArrayTypeDefinition> =
+  T['item'] extends PrimitiveTypeDefinition
+    ? InvocationPrimitiveType<T['item']>[]
+    : T['item'] extends ObjectTypeDefinition
+    ? InvocationObjectType<T['item']>[]
+    : T['item'] extends ArrayTypeDefinition
+    ? InvocationArrayType<T['item']>[]
+    : T['item'] extends EnumTypeDefinition
+    ? InvocationEnumType<T['item']>[]
+    : never;
 
 // Root input types
 
 export type InputTypeDefinition = {
   [name: string]:
     | PrimitiveTypeDefinition
-    | [PrimitiveTypeDefinition]
     | ObjectTypeDefinition
-    | [ObjectTypeDefinition];
+    | ArrayTypeDefinition
+    | EnumTypeDefinition;
 };
 
-export type ResolverInputType<T extends InputTypeDefinition> = {
+export type HandlerInputType<T extends InputTypeDefinition> = {
   [field in keyof T]: T[field] extends PrimitiveTypeDefinition
-    ? ResolverPrimitiveType<T[field]>
-    : T[field] extends [PrimitiveTypeDefinition]
-    ? ResolverPrimitiveType<T[field][0]>[]
+    ? HandlerPrimitiveType<T[field]>
+    : T[field] extends ArrayTypeDefinition
+    ? HandlerArrayType<T[field]>
     : T[field] extends ObjectTypeDefinition
-    ? ResolverObjectType<T[field]>
-    : T[field] extends [ObjectTypeDefinition]
-    ? ResolverObjectType<T[field][0]>[]
+    ? HandlerObjectType<T[field]>
+    : T[field] extends EnumTypeDefinition
+    ? HandlerEnumType<T[field]>
     : never;
 };
 
 export type InvocationInputType<T extends InputTypeDefinition> = {
   [field in keyof T]: T[field] extends PrimitiveTypeDefinition
     ? InvocationPrimitiveType<T[field]>
-    : T[field] extends [PrimitiveTypeDefinition]
-    ? InvocationPrimitiveType<T[field][0]>[]
-    : T[field] extends ObjectTypeDefinition & { required: false }
-    ? InvocationObjectType<T[field]> | undefined
+    : T[field] extends ArrayTypeDefinition
+    ? InvocationArrayType<T[field]>
     : T[field] extends ObjectTypeDefinition
     ? InvocationObjectType<T[field]>
-    : T[field] extends [ObjectTypeDefinition & { required: false }]
-    ? InvocationObjectType<T[field][0]>[] | undefined
-    : T[field] extends [ObjectTypeDefinition]
-    ? InvocationObjectType<T[field][0]>[]
+    : T[field] extends EnumTypeDefinition
+    ? InvocationEnumType<T[field]>
     : never;
 };
 
 // Output types
 
-export type OutputTypeDefinition =
-  | PrimitiveTypeName
-  | [PrimitiveTypeName]
-  | { [field: string]: OutputTypeDefinition }
-  | [{ [field: string]: OutputTypeDefinition }];
+export type PrimitiveOutputTypeDefinition = {
+  type: PrimitiveTypeName;
+  title?: string;
+  description?: string;
+  required?: boolean;
+};
 
-export type OutputType<T extends OutputTypeDefinition> = T extends PrimitiveTypeName
-  ? PrimitiveType<T>
-  : T extends [PrimitiveTypeName]
-  ? PrimitiveType<T[0]>[]
-  : T extends { [field: string]: OutputTypeDefinition }
-  ? { [field in keyof T]: OutputType<T[field]> }
-  : T extends [{ [field: string]: OutputTypeDefinition }]
-  ? { [field in keyof T[0]]: OutputType<T[0][field]> }[]
+export type PrimitiveOutputType<T extends PrimitiveOutputTypeDefinition> =
+  T['required'] extends false ? PrimitiveType<T['type']> | undefined : PrimitiveType<T['type']>;
+
+export type ObjectOutputTypeDefinition = {
+  type: 'object';
+  title?: string;
+  description?: string;
+  required?: boolean;
+  properties: {
+    [name: string]:
+      | PrimitiveOutputTypeDefinition
+      | ObjectOutputTypeDefinition
+      | ArrayOutputTypeDefinition
+      | EnumOutputTypeDefinition;
+  };
+};
+
+export type ObjectOutputType<T extends ObjectOutputTypeDefinition> = T['required'] extends false
+  ? { [field in keyof T['properties']]: OutputType<T['properties'][field]> } | undefined
+  : { [field in keyof T['properties']]: OutputType<T['properties'][field]> };
+
+export type ArrayOutputTypeDefinition = {
+  type: 'array';
+  title?: string;
+  description?: string;
+  required?: boolean;
+  item:
+    | PrimitiveOutputTypeDefinition
+    | ObjectOutputTypeDefinition
+    | ArrayOutputTypeDefinition
+    | EnumOutputTypeDefinition;
+};
+
+export type ArrayOutputType<T extends ArrayOutputTypeDefinition> = T['required'] extends false
+  ? OutputType<T['item']>[] | undefined
+  : OutputType<T['item']>[];
+
+export type EnumOutputTypeDefinition = {
+  type: 'enum';
+  title?: string;
+  description?: string;
+  required?: boolean;
+  values: {
+    [name: string]: {
+      title?: string;
+      description?: string;
+    };
+  };
+};
+
+export type EnumOutputType<T extends EnumOutputTypeDefinition> = T['required'] extends false
+  ? keyof T['values'] | undefined
+  : keyof T['values'];
+
+export type OutputTypeDefinition =
+  | PrimitiveOutputTypeDefinition
+  | ObjectOutputTypeDefinition
+  | ArrayOutputTypeDefinition
+  | EnumOutputTypeDefinition;
+
+export type OutputType<T extends OutputTypeDefinition> = T extends PrimitiveOutputTypeDefinition
+  ? PrimitiveOutputType<T>
+  : T extends EnumOutputTypeDefinition
+  ? EnumOutputType<T>
+  : T extends ObjectOutputTypeDefinition
+  ? ObjectOutputType<T>
+  : T extends ArrayOutputTypeDefinition
+  ? ArrayOutputType<T>
   : never;
 
-// Resolver
+// Operation
 
-export class Resolver<TInput extends InputTypeDefinition, TOutput extends OutputTypeDefinition> {
+export type OperationMetadata = {
+  headers: Record<string, string>;
+};
+
+export class Operation<TInput extends InputTypeDefinition, TOutput extends OutputTypeDefinition> {
+  public title?: string;
   public description?: string;
   public input: TInput;
   public output: TOutput;
   public handler:
-    | (<T extends TInput, U extends OutputTypeDefinition>(
-        input: ResolverInputType<T>,
-      ) => OutputType<U>)
-    | (<T extends TInput, U extends OutputTypeDefinition>(
-        input: ResolverInputType<T>,
-      ) => Promise<OutputType<U>>)
+    | (<T extends OutputTypeDefinition>(
+        input: Record<string, unknown>,
+        metadata: OperationMetadata,
+      ) => OutputType<T>)
+    | (<T extends OutputTypeDefinition>(
+        input: Record<string, unknown>,
+        metadata: OperationMetadata,
+      ) => Promise<OutputType<T>>)
     | undefined;
 
   constructor(options: {
+    title?: string;
     description?: string;
     input: TInput;
     output: TOutput;
-    resolver:
-      | ((input: ResolverInputType<TInput>) => OutputType<TOutput>)
-      | ((input: ResolverInputType<TInput>) => Promise<OutputType<TOutput>>);
+    handler:
+      | ((input: HandlerInputType<TInput>, metadata: OperationMetadata) => OutputType<TOutput>)
+      | ((
+          input: HandlerInputType<TInput>,
+          metadata: OperationMetadata,
+        ) => Promise<OutputType<TOutput>>);
   }) {
+    this.title = options.title;
     this.description = options.description;
     this.input = options.input;
     this.output = options.output;
-    this.handler = options.resolver as typeof this.handler;
+    this.handler = options.handler as typeof this.handler;
   }
 }
 
-export type ResolverMap = {
-  [name: string]: Resolver<InputTypeDefinition, OutputTypeDefinition>;
+export type OperationMap = {
+  [name: string]: Operation<InputTypeDefinition, OutputTypeDefinition>;
 };
 
-export class Schema<R extends ResolverMap> {
-  private resolvers: R;
+export class Schema<R extends OperationMap> {
+  operations: R;
 
-  constructor(resolvers: R) {
-    this.resolvers = resolvers;
+  constructor(operations: R) {
+    this.operations = operations;
   }
 
   async execute<OperationName extends keyof R>(
-    operation: OperationName,
+    operationName: OperationName,
     args: InvocationInputType<R[OperationName]['input']>,
+    metadata: Partial<OperationMetadata>,
   ): Promise<OutputType<R[OperationName]['output']>> {
-    const resolver = this.resolvers[operation];
+    const operation = this.operations[operationName];
 
-    if (!resolver) {
-      throw new Error(`Resolver "${String(operation)}" does not exist`);
+    if (!operation) {
+      throw new ValidationError(`Operation "${String(operationName)}" not found`);
     }
-    if (!resolver.handler) {
-      throw new Error(`Resolver "${String(operation)}" does not have a handler`);
+    if (!operation.handler) {
+      throw new ValidationError(`Operation "${String(operationName)}" does not have a handler`);
     }
 
-    const validatedArgs = Validation.validateRootObjectInput(args, resolver.input);
+    const validatedArgs = Validation.validateRootObjectInput(args, operation.input);
 
-    return resolver.handler(validatedArgs);
+    const result = await operation.handler(validatedArgs, {
+      headers: metadata.headers || {},
+    });
+
+    return Validation.validateAndCleanOutput(operation.output, result) as OutputType<
+      R[OperationName]['output']
+    >;
   }
 }

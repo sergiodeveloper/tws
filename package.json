@@ -1,19 +1,20 @@
 {
-  "version": "0.1.2",
+  "version": "0.2.0",
   "name": "@tws-js/server",
   "description": "Type-Safe Web Server Framework",
   "license": "MIT",
   "main": "dist/index.js",
+  "repository": "https://github.com/sergiodeveloper/tws",
   "scripts": {
     "test": "npm run unit-test && npm run integration-test",
-    "unit-test": "NODE_OPTIONS=--enable-source-maps jest --config=jest-unit.config.js",
-    "integration-test": "NODE_OPTIONS=--enable-source-maps jest --config=jest-integration.config.js",
+    "unit-test": "NODE_OPTIONS=--enable-source-maps jest test/unit",
+    "integration-test": "NODE_OPTIONS=--enable-source-maps jest test/integration",
     "lint": "npm run twly && npm run eslint && npx tsc --noEmit",
     "format": "eslint src test --fix",
-    "start": "nodemon --exec ts-node index.ts",
     "build": "rm -rf dist && tsc",
     "twly": "npx twly -t .trc && npx twly -t test/.trc",
-    "eslint": "npx eslint src test"
+    "eslint": "npx eslint src test",
+    "deploy": "npm run lint && npm test && npm run build && npm publish --access=public"
   },
   "dependencies": {
     "express": "^4.18.2"

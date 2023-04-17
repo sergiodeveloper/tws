@@ -1,8 +1,12 @@
-import { Resolver, Schema, Server, createServer } from '../../src/index';
+import { Operation, Schema, Server, createServer } from '../../src/index';
 
 const PARSE_BODY_JSON_ERROR = 'Failed to parse request body, check if it is valid JSON';
 
-function fakeExpressRequest(data: string, chunkSize: number) {
+function fakeExpressRequest(
+  data: string,
+  chunkSize: number,
+  headers: Record<string, string | string[]> = {},
+) {
   let onDataCallback: (data: string) => void;
   let onEndCallback: () => void;
 
@@ -27,6 +31,7 @@ function fakeExpressRequest(data: string, chunkSize: number) {
         throw new Error(`Unexpected event: ${event}`);
       }
     }),
+    headers,
   };
 }
 
@@ -34,6 +39,8 @@ function fakeExpressResponse() {
   return {
     status: jest.fn(),
     json: jest.fn(),
+    setHeader: jest.fn(),
+    send: jest.fn(),
   };
 }
 
@@ -116,33 +123,43 @@ describe('Server', () => {
 
   test('process post request', async () => {
     const schema = new Schema({
-      sayHello: new Resolver({
+      sayHello: new Operation({
         description: 'Say hello',
         input: {
           name: {
             type: 'string',
             description: 'Name of the person',
           },
+          active: {
+            type: 'boolean',
+          },
+          type: {
+            type: 'enum',
+            values: { admin: {}, member: {} },
+          },
         },
-        output: 'string',
-        resolver: async ({ name }) => {
+        output: { type: 'string' },
+        handler: async ({ name }) => {
           return `Hello ${name}`;
         },
       }),
     });
 
     const errorLogger = jest.fn();
-    const result = await Server.processPostRequest({
+    const result = await Server.processServerRequest({
       schema,
       body: JSON.stringify({
         operation: 'sayHello',
         input: {
           name: 'John',
+          active: true,
+          type: 'admin',
         },
       }),
       logger: {
         error: errorLogger,
       },
+      headers: {},
     });
 
     expect(result).toEqual({
@@ -154,45 +171,121 @@ describe('Server', () => {
 
   test('process post request with invalid body', async () => {
     const schema = new Schema({
-      getBoolean: new Resolver({
-        description: 'Get a boolean',
+      getBoolean: new Operation({
+        description: 'Get boolean',
         input: {},
-        output: 'boolean',
-        resolver: async () => true,
+        output: { type: 'boolean' },
+        handler: async () => true,
       }),
     });
 
     const errorLogger = jest.fn();
-    const result = await Server.processPostRequest({
+    const result = await Server.processServerRequest({
+      schema,
+      body: 'invalidBody',
+      logger: {
+        error: errorLogger,
+      },
+      headers: {},
+    });
+
+    expect(result).toEqual({
+      error: PARSE_BODY_JSON_ERROR,
+    });
+
+    expect(errorLogger).toHaveBeenCalledTimes(2);
+    expect(errorLogger).toHaveBeenNthCalledWith(
+      1,
+      'Failed to parse request body: SyntaxError: Unexpected token i in JSON at position 0',
+    );
+    expect(errorLogger).toHaveBeenNthCalledWith(
+      2,
+      'Failed to parse request body: Error: Failed to parse request body, check if it is valid JSON',
+    );
+  });
+
+  test('process post request with unexpected error on parse body', async () => {
+    jest.spyOn(Server, 'parseRequestBody').mockImplementation(() => {
+      throw new Error('TestError');
+    });
+
+    const schema = new Schema({
+      getBoolean: new Operation({
+        description: 'Get a boolean',
+        input: {},
+        output: { type: 'boolean' },
+        handler: async () => true,
+      }),
+    });
+
+    const errorLogger = jest.fn();
+    const result = await Server.processServerRequest({
       schema,
       body: 'invalid body',
       logger: {
         error: errorLogger,
       },
+      headers: {},
     });
 
     expect(result).toEqual({
-      error: 'Failed to parse request body: Error: ' + PARSE_BODY_JSON_ERROR,
+      error: 'Failed to parse request body. Check the server logs for more details',
     });
 
     expect(errorLogger).toHaveBeenCalledTimes(1);
-    expect(errorLogger.mock.calls[0][0]).toMatch(/^Failed to parse request body: /);
+    expect(errorLogger).toHaveBeenNthCalledWith(
+      1,
+      'Failed to parse request body: Error: TestError',
+    );
+  });
+
+  test('process post request with inexistent operation', async () => {
+    const schema = new Schema({
+      getBoolean: new Operation({
+        input: {},
+        output: { type: 'boolean' },
+        handler: () => true,
+      }),
+    });
+
+    const errorLogger = jest.fn();
+    const result = await Server.processServerRequest({
+      schema,
+      body: JSON.stringify({
+        operation: 'inexistentOperation',
+        input: {},
+      }),
+      logger: {
+        error: errorLogger,
+      },
+      headers: {},
+    });
+
+    expect(result).toEqual({
+      error: 'Operation "inexistentOperation" not found',
+    });
+
+    expect(errorLogger).toHaveBeenCalledTimes(1);
+    expect(errorLogger).toHaveBeenNthCalledWith(
+      1,
+      'Failed to execute operation "inexistentOperation": Error: Operation "inexistentOperation" not found',
+    );
   });
 
   test('process post request failing to resolve', async () => {
     const schema = new Schema({
-      getBoolean: new Resolver({
+      getBoolean: new Operation({
         description: 'Get a boolean',
         input: {},
-        output: 'boolean',
-        resolver: async () => {
+        output: { type: 'boolean' },
+        handler: async () => {
           throw new Error('Failed to get boolean');
         },
       }),
     });
 
     const errorLogger = jest.fn();
-    const result = await Server.processPostRequest({
+    const result = await Server.processServerRequest({
       schema,
       body: JSON.stringify({
         operation: 'getBoolean',
@@ -201,14 +294,18 @@ describe('Server', () => {
       logger: {
         error: errorLogger,
       },
+      headers: {},
     });
 
     expect(result).toEqual({
-      error: 'Failed to execute operation, please check your request body',
+      error: 'Failed to execute operation. Check the server logs for more details',
     });
 
     expect(errorLogger).toHaveBeenCalledTimes(1);
-    expect(errorLogger.mock.calls[0][0]).toMatch(/^Failed to execute operation "getBoolean": /);
+    expect(errorLogger).toHaveBeenNthCalledWith(
+      1,
+      'Failed to execute operation "getBoolean": Error: Failed to get boolean',
+    );
   });
 
   test('get request body from express request', async () => {
@@ -229,19 +326,20 @@ describe('Server', () => {
     await expect(Server.getRequestBody(req, 100)).rejects.toThrowError('Request body is too large');
   });
 
-  test('call express endpoint listener', async () => {
+  test('call express server listener', async () => {
     const schema = new Schema({
-      getNumber: new Resolver({
+      getNumber: new Operation({
         description: 'Number',
         input: {},
-        output: 'number',
-        resolver: async () => 5,
+        output: { type: 'int' },
+        handler: async () => 5,
       }),
     });
 
-    const listener = Server.createExpressEndpointListener({
+    const listener = Server.createExpressServerListener({
       schema,
       maxRequestBodyBytes: 100,
+      allowedOrigin: '*',
       logger: {
         error: jest.fn(),
       },
@@ -253,6 +351,7 @@ describe('Server', () => {
         input: {},
       }),
       2,
+      { 'content-type': 'application/json', 'set-cookie': ['a=1', 'b=2'] },
     );
 
     const res = fakeExpressResponse();
@@ -267,20 +366,21 @@ describe('Server', () => {
     });
   });
 
-  test('call express endpoint listener with invalid body', async () => {
+  test('call express server listener with invalid body', async () => {
     const schema = new Schema({
-      getString: new Resolver({
+      getString: new Operation({
         description: 'Get a string',
         input: {},
-        output: 'string',
-        resolver: async () => 'test',
+        output: { type: 'string' },
+        handler: async () => 'test',
       }),
     });
 
     const errorLogger = jest.fn();
-    const listener = Server.createExpressEndpointListener({
+    const listener = Server.createExpressServerListener({
       schema,
       maxRequestBodyBytes: 100,
+      allowedOrigin: '*',
       logger: {
         error: errorLogger,
       },
@@ -296,20 +396,104 @@ describe('Server', () => {
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledTimes(1);
     expect(res.json).toHaveBeenCalledWith({
-      error: 'Failed to parse request body: Error: ' + PARSE_BODY_JSON_ERROR,
+      error: PARSE_BODY_JSON_ERROR,
     });
 
-    expect(errorLogger).toHaveBeenCalledTimes(1);
-    expect(errorLogger.mock.calls[0][0]).toMatch(/^Failed to parse request body: /);
+    expect(errorLogger).toHaveBeenCalledTimes(2);
+    expect(errorLogger).toHaveBeenNthCalledWith(
+      1,
+      'Failed to parse request body: SyntaxError: Unexpected token i in JSON at position 0',
+    );
+    expect(errorLogger).toHaveBeenNthCalledWith(
+      2,
+      'Failed to parse request body: Error: Failed to parse request body, check if it is valid JSON',
+    );
+  });
+
+  test('call express playground listener', async () => {
+    const listener = Server.createExpressPlaygroundListener({
+      allowedOrigin: '*',
+      serverPath: '/server',
+      schemaPath: '/schema',
+    });
+
+    const req = fakeExpressRequest('', 10);
+
+    const res = fakeExpressResponse();
+
+    listener(req, res);
+
+    expect(res.status).toHaveBeenCalledTimes(1);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledTimes(0);
+    expect(res.send).toHaveBeenCalledTimes(1);
+    expect(res.send).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /^<!DOCTYPE html>.+<title>TWS Playground<\/title>.+<body>.+<script.+<\/script>.+<\/body>.+<\/html>/s,
+      ),
+    );
+  });
+
+  test('call express schema listener', async () => {
+    const schema = new Schema({
+      getNumber: new Operation({
+        description: 'Get float',
+        input: {},
+        output: { type: 'float' },
+        handler: async () => 5,
+      }),
+    });
+
+    const listener = Server.createExpressSchemaListener({ schema, allowedOrigin: '*' });
+
+    const req = fakeExpressRequest('', 10);
+
+    const res = fakeExpressResponse();
+
+    listener(req, res);
+
+    expect(res.status).toHaveBeenCalledTimes(1);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledTimes(0);
+    expect(res.send).toHaveBeenCalledTimes(1);
+    expect(res.send).toHaveBeenCalledWith(
+      JSON.stringify({
+        operations: {
+          getNumber: {
+            description: 'Get float',
+            input: {},
+            output: {
+              type: 'float',
+            },
+          },
+        },
+      }),
+    );
+  });
+
+  test('call express options listener', async () => {
+    const listener = Server.createExpressOptionsListener({ allowedOrigin: '*', maxAge: 1000 });
+
+    const req = fakeExpressRequest('', 10);
+
+    const res = fakeExpressResponse();
+
+    listener(req, res);
+
+    expect(res.status).toHaveBeenCalledTimes(1);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.setHeader).toHaveBeenCalledTimes(4);
+    expect(res.send).toHaveBeenCalledTimes(1);
+    expect(res.send).toHaveBeenCalledWith();
   });
 
   test('create an express server', async () => {
     const schema = new Schema({
-      getNumber: new Resolver({
+      getNumber: new Operation({
         description: 'Get a number',
         input: {},
-        output: 'number',
-        resolver: async () => 5,
+        output: { type: 'float' },
+        handler: async () => 5,
       }),
     });
 
@@ -318,6 +502,7 @@ describe('Server', () => {
       logger: {
         error: jest.fn(),
       },
+      enablePlayground: true,
     });
 
     expect(typeof server).toEqual('function');
@@ -329,11 +514,11 @@ describe('Server', () => {
 
   test('create an express server with custom attributes', async () => {
     const schema = new Schema({
-      getNumber: new Resolver({
+      getNumber: new Operation({
         description: 'Get a number',
         input: {},
-        output: 'number',
-        resolver: async () => 5,
+        output: { type: 'int' },
+        handler: async () => 5,
       }),
     });
 
@@ -342,8 +527,13 @@ describe('Server', () => {
       logger: {
         error: jest.fn(),
       },
-      endpoint: '/custom',
+      path: '/custom',
+      allowedOrigins: ['test1', 'test2'],
       maxRequestBodyBytes: 100,
+      accessControlMaxAgeSeconds: 30,
+      enablePlayground: true,
+      playgroundPath: '/custom-playground',
+      schemaPath: '/custom-schema',
     });
 
     expect(typeof server).toEqual('function');

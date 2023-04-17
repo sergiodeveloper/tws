@@ -1,4 +1,4 @@
-import { Resolver, Schema } from '../../src/index';
+import { Operation, Schema } from '../../src/index';
 import { Validation } from '../../src/validation';
 
 describe('Schema', () => {
@@ -6,8 +6,9 @@ describe('Schema', () => {
     jest.restoreAllMocks();
   });
 
-  test('resolver constructor', async () => {
+  test('operation constructor', async () => {
     const parameters = {
+      title: 'title',
       description: 'desc',
       input: {
         name: {
@@ -16,38 +17,44 @@ describe('Schema', () => {
           required: true,
         },
       },
-      output: 'string' as const,
-      resolver: jest.fn().mockReturnValue('world'),
+      output: {
+        type: 'string' as const,
+      },
+      handler: jest.fn().mockReturnValue('world'),
     };
 
-    const resolver = new Resolver(parameters);
+    const operation = new Operation(parameters);
 
-    expect(resolver.description).toBe(parameters.description);
-    expect(resolver.input).toBe(parameters.input);
-    expect(resolver.output).toBe(parameters.output);
-    expect(resolver.handler).toBe(parameters.resolver);
+    expect(operation.title).toBe(parameters.title);
+    expect(operation.description).toBe(parameters.description);
+    expect(operation.input).toBe(parameters.input);
+    expect(operation.output).toBe(parameters.output);
+    expect(operation.handler).toBe(parameters.handler);
   });
 
   test('execute schema', async () => {
-    jest.spyOn(Validation, 'validateRootObjectInput').mockImplementation((args) => args);
+    jest
+      .spyOn(Validation, 'validateRootObjectInput')
+      .mockImplementation((args) => args as Record<string, unknown>);
 
-    const initialResolvers = {
-      initial: {},
+    jest.spyOn(Validation, 'validateAndCleanOutput').mockImplementation((_, value) => value);
+
+    const initialOperations = {
+      initial: {
+        handler: jest.fn(),
+        input: {},
+        output: {
+          type: 'object' as const,
+          properties: {},
+        },
+      },
     };
 
-    const schema = new Schema(
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      initialResolvers,
-    );
+    const schema = new Schema(initialOperations);
 
-    expect(
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      schema.resolvers,
-    ).toEqual(initialResolvers);
+    expect(schema.operations).toEqual(initialOperations);
 
-    const resolvers = {
+    const operations = {
       hello: {
         handler: jest.fn().mockReturnValue('world'),
         input: {
@@ -62,27 +69,29 @@ describe('Schema', () => {
 
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
-    schema.resolvers = resolvers;
+    schema.operations = operations;
 
     const args = { name: 'say hello' };
+    const metadata = {};
 
     const result = await schema.execute(
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       'hello',
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
       args,
+      metadata,
     );
 
     expect(result).toBe('world');
-    expect(resolvers.hello.handler).toHaveBeenCalledWith(args);
+    expect(operations.hello.handler).toHaveBeenCalledWith(args, { headers: {} });
 
-    expect(Validation.validateRootObjectInput).toHaveBeenCalledWith(args, resolvers.hello.input);
+    expect(Validation.validateRootObjectInput).toHaveBeenCalledWith(args, operations.hello.input);
   });
 
-  test('execute schema with missing resolver', async () => {
-    jest.spyOn(Validation, 'validateRootObjectInput').mockImplementation((args) => args);
+  test('execute schema with missing operation', async () => {
+    jest
+      .spyOn(Validation, 'validateRootObjectInput')
+      .mockImplementation((args) => args as Record<string, unknown>);
 
     const schema = new Schema({});
 
@@ -92,14 +101,17 @@ describe('Schema', () => {
         // @ts-ignore
         'hello',
         {},
+        {},
       ),
-    ).rejects.toThrowError('Resolver "hello" does not exist');
+    ).rejects.toThrowError('Operation "hello" not found');
 
     expect(Validation.validateRootObjectInput).not.toHaveBeenCalled();
   });
 
-  test('execute schema with missing resolver handler', async () => {
-    jest.spyOn(Validation, 'validateRootObjectInput').mockImplementation((args) => args);
+  test('execute schema with missing operation handler', async () => {
+    jest
+      .spyOn(Validation, 'validateRootObjectInput')
+      .mockImplementation((args) => args as Record<string, unknown>);
 
     const schema = new Schema({
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -107,8 +119,8 @@ describe('Schema', () => {
       hello: {},
     });
 
-    await expect(schema.execute('hello', {})).rejects.toThrowError(
-      'Resolver "hello" does not have a handler',
+    await expect(schema.execute('hello', {}, {})).rejects.toThrowError(
+      'Operation "hello" does not have a handler',
     );
 
     expect(Validation.validateRootObjectInput).not.toHaveBeenCalled();

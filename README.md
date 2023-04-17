@@ -3,7 +3,11 @@
 [![Test](https://github.com/sergiodeveloper/tws/actions/workflows/test.yml/badge.svg)](https://github.com/sergiodeveloper/tws/actions/workflows/test.yml)
 [![NPM](https://img.shields.io/npm/v/@tws-js/server)](https://www.npmjs.com/package/@tws-js/server)
 
-TWS is a framework built with TypeScript to create type-safe web servers.
+<p align="center">
+  <img alt="TWS Logo" height="150" src="https://user-images.githubusercontent.com/7635171/232378489-e32588ea-e76b-4fd9-9cad-14bfb045e7b3.svg" />
+  <br>
+  <b>TWS is a framework built with TypeScript to create type-safe web servers.</b>
+</p>
 
 ✅ 100% code coverage
 
@@ -20,10 +24,10 @@ npm install @tws-js/server
 Start the server:
 
 ```typescript
-import { Resolver, Schema, createServer } from '@tws-js/server';
+import { Operation, Schema, createServer } from '@tws-js/server';
 
 const schema = new Schema({
-  hello: new Resolver({
+  hello: new Operation({
     input: {
       name: {
         type: 'string',
@@ -31,10 +35,19 @@ const schema = new Schema({
         description: 'The name to greet',
       },
     },
-    output: { message: 'string' },
-    resolver: ({ name }) => { // "name" is automatically typed as string from the input
+    output: {
+      type: 'object',
+      properties: {
+        message: {
+          type: 'string',
+          description: 'The greeting message',
+        },
+      },
+    },
+    handler: ({ name }, metadata) => { // "name" automatically typed as string
       return {
-        // Typescript will warn if "message" is not a string, as required by the output
+        // Typescript will warn if "message" is not a string,
+        // as required by the output
         message: `Hello ${name}`,
       };
     },
@@ -43,10 +56,11 @@ const schema = new Schema({
 
 const server = createServer({
   schema,
-  endpoint: '/tws',
+  path: '/tws',
   logger: {
     error: (message) => console.error(message),
   },
+  enablePlayground: true,
 });
 
 server.listen(3000);
@@ -55,7 +69,10 @@ server.listen(3000);
 Send a request to the server:
 
 ```bash
-curl -X POST -H "Content-Type: application/json" -d '{ "operation": "hello", "input": { "name": "TWS" } }' http://localhost:3000/tws
+curl -X POST \
+  http://localhost:3000/tws \
+  -H "Content-Type: application/json" \
+  -d '{ "operation": "hello", "input": { "name": "TWS" } }'
 ```
 
 Check the response:

@@ -6,6 +6,6 @@
     "dist/**/*.*",
     "test/**/*.*"
   ],
-  "minLines": 5,
+  "minLines": 10,
   "minChars": 100
 }

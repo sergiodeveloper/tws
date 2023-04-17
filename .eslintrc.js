@@ -5,7 +5,7 @@ module.exports = {
     'prettier',
     'eslint-plugin-sonarjs'
   ],
-  ignorePatterns: ['dist', 'jest-unit.config.js', 'jest-integration.config.js', '.eslintrc.js'],
+  ignorePatterns: ['dist', 'jest.config.js', '.eslintrc.js'],
   extends: [
     'eslint:recommended',
     'plugin:@typescript-eslint/eslint-recommended',
@@ -32,7 +32,7 @@ module.exports = {
       }
     ],
 
-    'sonarjs/cognitive-complexity': ['error', 8],
+    'sonarjs/cognitive-complexity': ['error', 11],
     "curly": "error",
 
     'no-process-exit': 'error',

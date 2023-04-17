@@ -1,4 +1,4 @@
-import { Schema, Resolver } from '../../src/index';
+import { Schema, Operation } from '../../src/index';
 
 describe('Schema', () => {
   afterEach(() => {
@@ -7,22 +7,25 @@ describe('Schema', () => {
 
   test('handler with no arguments', async () => {
     const schema = new Schema({
-      sayHello: new Resolver({
+      sayHello: new Operation({
+        title: 'Say hello',
         description: 'Returns a string',
         input: {},
-        output: 'string',
-        resolver: async () => 'Hello world!',
+        output: {
+          type: 'string',
+        },
+        handler: async () => 'Hello world!',
       }),
     });
 
-    const result = await schema.execute('sayHello', {});
+    const result = await schema.execute('sayHello', {}, {});
 
     expect(result).toEqual('Hello world!');
   });
 
   test('handler with an optional argument', async () => {
     const schema = new Schema({
-      sayHello: new Resolver({
+      sayHello: new Operation({
         description: 'Returns a string',
         input: {
           name: {
@@ -31,21 +34,21 @@ describe('Schema', () => {
             required: false,
           },
         },
-        output: 'string',
-        resolver: async ({ name }) => `Hi ${name || 'everyone'}!`,
+        output: { type: 'string' },
+        handler: async ({ name }) => `Hi ${name || 'everyone'}!`,
       }),
     });
 
-    const result1 = await schema.execute('sayHello', { name: undefined });
+    const result1 = await schema.execute('sayHello', { name: undefined }, {});
     expect(result1).toEqual('Hi everyone!');
 
-    const result2 = await schema.execute('sayHello', { name: 'John' });
+    const result2 = await schema.execute('sayHello', { name: 'John' }, {});
     expect(result2).toEqual('Hi John!');
   });
 
   test('handler with a default value', async () => {
     const schema = new Schema({
-      testDefaultValue: new Resolver({
+      testDefaultValue: new Operation({
         description: 'Returns a value',
         input: {
           textual: {
@@ -55,13 +58,13 @@ describe('Schema', () => {
             defaultValue: 'abc',
           },
           numeric: {
-            type: 'number',
+            type: 'int',
             description: 'Always a number',
             required: false,
             defaultValue: 123,
           },
           overriden: {
-            type: 'number',
+            type: 'int',
             description: 'Always a number',
             required: false,
             defaultValue: 20,
@@ -74,12 +77,16 @@ describe('Schema', () => {
           },
         },
         output: {
-          textual: 'string',
-          numeric: 'number',
-          overriden: 'number',
-          textualButDefaultNumeric: 'string',
+          type: 'object',
+          properties: {
+            textual: { type: 'string' },
+            numeric: { type: 'int' },
+            overriden: { type: 'int' },
+            textualButDefaultNumeric: { type: 'string' },
+            enum: { type: 'enum', values: { a: {}, b: {} } },
+          },
         },
-        resolver: async ({ textual, numeric, overriden, textualButDefaultNumeric }) => {
+        handler: async ({ textual, numeric, overriden, textualButDefaultNumeric }) => {
           return {
             textual,
             numeric,
@@ -88,28 +95,34 @@ describe('Schema', () => {
               typeof textualButDefaultNumeric === 'number'
                 ? (textualButDefaultNumeric + 10).toString()
                 : textualButDefaultNumeric,
+            enum: 'a' as const,
           };
         },
       }),
     });
 
-    const result = await schema.execute('testDefaultValue', {
-      textual: undefined,
-      numeric: undefined,
-      overriden: 40,
-      textualButDefaultNumeric: undefined,
-    });
+    const result = await schema.execute(
+      'testDefaultValue',
+      {
+        textual: undefined,
+        numeric: undefined,
+        overriden: 40,
+        textualButDefaultNumeric: undefined,
+      },
+      {},
+    );
     expect(result).toEqual({
       textual: 'abc',
       numeric: 123,
       overriden: 40,
       textualButDefaultNumeric: '466',
+      enum: 'a',
     });
   });
 
   test('handler with a optional object', async () => {
     const schema = new Schema({
-      testWithOptionalObject: new Resolver({
+      testWithOptionalObject: new Operation({
         description: 'Returns a value',
         input: {
           optionalObject: {
@@ -126,11 +139,18 @@ describe('Schema', () => {
           },
         },
         output: {
-          optionalObject: {
-            name: 'string',
+          type: 'object',
+          properties: {
+            optionalObject: {
+              type: 'object',
+              required: false,
+              properties: {
+                name: { type: 'string' },
+              },
+            },
           },
         },
-        resolver: async ({ optionalObject }) => {
+        handler: async ({ optionalObject }) => {
           return {
             optionalObject,
           };
@@ -138,14 +158,22 @@ describe('Schema', () => {
       }),
     });
 
-    const result1 = await schema.execute('testWithOptionalObject', {
-      optionalObject: undefined,
-    });
-    const result2 = await schema.execute('testWithOptionalObject', {
-      optionalObject: {
-        name: 'John',
+    const result1 = await schema.execute(
+      'testWithOptionalObject',
+      {
+        optionalObject: undefined,
       },
-    });
+      {},
+    );
+    const result2 = await schema.execute(
+      'testWithOptionalObject',
+      {
+        optionalObject: {
+          name: 'John',
+        },
+      },
+      {},
+    );
 
     expect(result1).toEqual({
       optionalObject: undefined,
@@ -159,7 +187,7 @@ describe('Schema', () => {
 
   test('handler with primitives as arguments', async () => {
     const schema = new Schema({
-      sayHelloTo: new Resolver({
+      sayHelloTo: new Operation({
         description: 'Returns a string with a name and value',
         input: {
           name: {
@@ -167,16 +195,19 @@ describe('Schema', () => {
             description: 'Name to say hello to',
           },
           value: {
-            type: 'number',
+            type: 'float',
             description: 'Value to be sent with the message',
           },
         },
         output: {
-          fullMessage: 'string',
-          onlyName: 'string',
-          onlyValue: 'number',
+          type: 'object',
+          properties: {
+            fullMessage: { type: 'string' },
+            onlyName: { type: 'string' },
+            onlyValue: { type: 'int' },
+          },
         },
-        resolver: async ({ name, value }) => {
+        handler: async ({ name, value }) => {
           return {
             fullMessage: `Hello ${name}! Value: ${value}`,
             onlyName: name,
@@ -186,10 +217,14 @@ describe('Schema', () => {
       }),
     });
 
-    const result = await schema.execute('sayHelloTo', {
-      name: 'John',
-      value: 123,
-    });
+    const result = await schema.execute(
+      'sayHelloTo',
+      {
+        name: 'John',
+        value: 123,
+      },
+      {},
+    );
 
     expect(result).toEqual({
       fullMessage: 'Hello John! Value: 123',
@@ -200,22 +235,26 @@ describe('Schema', () => {
 
   test('handler with list of primitives as argument', async () => {
     const schema = new Schema({
-      listNicknames: new Resolver({
+      listNicknames: new Operation({
         description: 'Return formatted nicknames',
         input: {
-          nicknames: [
-            {
+          nicknames: {
+            type: 'array',
+            item: {
               type: 'string',
               description: 'Nicknames',
             },
-          ],
+          },
         },
         output: {
-          nicknames: ['string'],
-          formattedNicknames: 'string',
-          numberOfNicknames: 'number',
+          type: 'object',
+          properties: {
+            nicknames: { type: 'array', item: { type: 'string' } },
+            formattedNicknames: { type: 'string' },
+            numberOfNicknames: { type: 'int' },
+          },
         },
-        resolver: async ({ nicknames }) => {
+        handler: async ({ nicknames }) => {
           const formattedNicknames = nicknames.join(', ');
 
           return {
@@ -227,9 +266,13 @@ describe('Schema', () => {
       }),
     });
 
-    const result = await schema.execute('listNicknames', {
-      nicknames: ['John', 'Joe', 'Jack'],
-    });
+    const result = await schema.execute(
+      'listNicknames',
+      {
+        nicknames: ['John', 'Joe', 'Jack'],
+      },
+      {},
+    );
 
     expect(result).toEqual({
       nicknames: ['John', 'Joe', 'Jack'],
@@ -240,7 +283,7 @@ describe('Schema', () => {
 
   test('handler with object as argument', async () => {
     const schema = new Schema({
-      makeOrder: new Resolver({
+      makeOrder: new Operation({
         description: 'Make an order',
         input: {
           product: {
@@ -252,8 +295,15 @@ describe('Schema', () => {
                 description: 'Product ID',
               },
               amount: {
-                type: 'number',
+                type: 'float',
                 description: 'Amount of the product',
+              },
+              category: {
+                type: 'enum',
+                values: {
+                  KITCHEN: { description: 'Item for the kitchen' },
+                  BATHROOM: { description: 'Item for the bathroom' },
+                },
               },
               address: {
                 type: 'object',
@@ -264,7 +314,7 @@ describe('Schema', () => {
                     description: 'Street',
                   },
                   number: {
-                    type: 'number',
+                    type: 'int',
                     description: 'Number',
                   },
                 },
@@ -273,13 +323,19 @@ describe('Schema', () => {
           },
         },
         output: {
-          orderId: 'string',
-          product: {
-            id: 'string',
-            amount: 'number',
+          type: 'object',
+          properties: {
+            orderId: { type: 'string' },
+            product: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                amount: { type: 'float' },
+              },
+            },
           },
         },
-        resolver: async ({ product }) => {
+        handler: async ({ product }) => {
           return {
             orderId: '1234',
             product,
@@ -288,37 +344,39 @@ describe('Schema', () => {
       }),
     });
 
-    const result = await schema.execute('makeOrder', {
-      product: {
-        id: '123',
-        amount: 2,
-        address: {
-          street: 'Main Street',
-          number: 123,
+    const result = await schema.execute(
+      'makeOrder',
+      {
+        product: {
+          id: '123',
+          amount: 2,
+          address: {
+            street: 'Main Street',
+            number: 123,
+          },
+          category: 'KITCHEN',
         },
       },
-    });
+      {},
+    );
 
     expect(result).toEqual({
       orderId: '1234',
       product: {
         id: '123',
         amount: 2,
-        address: {
-          street: 'Main Street',
-          number: 123,
-        },
       },
     });
   });
 
   test('handler with list of objects as argument', async () => {
     const schema = new Schema({
-      listCars: new Resolver({
+      listCars: new Operation({
         description: 'Return formatted cars',
         input: {
-          cars: [
-            {
+          cars: {
+            type: 'array',
+            item: {
               type: 'object',
               description: 'Car',
               properties: {
@@ -330,27 +388,35 @@ describe('Schema', () => {
                   type: 'string',
                   description: 'Color of the car',
                 },
-                accessories: [
-                  {
+                accessories: {
+                  type: 'array',
+                  item: {
                     type: 'string',
                     description: 'Accessories of the car',
                   },
-                ],
+                },
               },
             },
-          ],
+          },
         },
         output: {
-          formattedCars: 'string',
-          numberOfCars: 'number',
-          cars: [
-            {
-              name: 'string',
-              color: 'string',
+          type: 'object',
+          properties: {
+            formattedCars: { type: 'string' },
+            numberOfCars: { type: 'int' },
+            cars: {
+              type: 'array',
+              item: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  color: { type: 'string' },
+                },
+              },
             },
-          ],
+          },
         },
-        resolver: async ({ cars }) => {
+        handler: async ({ cars }) => {
           const formattedCars = cars.map((car) => `${car.name} (${car.color})`).join(', ');
 
           return {
@@ -362,20 +428,24 @@ describe('Schema', () => {
       }),
     });
 
-    const result = await schema.execute('listCars', {
-      cars: [
-        {
-          name: 'BMW',
-          color: 'black',
-          accessories: ['leather seats', 'sunroof'],
-        },
-        {
-          name: 'Audi',
-          color: 'white',
-          accessories: ['keyless entry', 'heated seats'],
-        },
-      ],
-    });
+    const result = await schema.execute(
+      'listCars',
+      {
+        cars: [
+          {
+            name: 'BMW',
+            color: 'black',
+            accessories: ['leather seats', 'sunroof'],
+          },
+          {
+            name: 'Audi',
+            color: 'white',
+            accessories: ['keyless entry', 'heated seats'],
+          },
+        ],
+      },
+      {},
+    );
 
     expect(result.cars).toHaveLength(2);
 
@@ -386,25 +456,23 @@ describe('Schema', () => {
         {
           name: 'BMW',
           color: 'black',
-          accessories: ['leather seats', 'sunroof'],
         },
         {
           name: 'Audi',
           color: 'white',
-          accessories: ['keyless entry', 'heated seats'],
         },
       ],
     });
   });
 
-  test('check if resolver exists', async () => {
+  test('check if operation exists', async () => {
     const schema = new Schema({
-      forbiddenResolver: new Resolver({
-        description: "Resolver that won't be called",
+      forbiddenOperation: new Operation({
+        description: "Operation that won't be called",
         input: {},
-        output: 'boolean',
-        resolver: async () => {
-          throw new Error('This resolver should not be called');
+        output: { type: 'boolean' },
+        handler: async () => {
+          throw new Error('This operation should not be called');
         },
       }),
     });
@@ -412,31 +480,31 @@ describe('Schema', () => {
     try {
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
-      await schema.execute('invalidResolver', {});
+      await schema.execute('invalidOperation', {});
       throw new Error('Should not be called');
     } catch (e) {
       if (!(e instanceof Error)) {
         throw new Error('Wrong error type');
       }
 
-      expect(e.message).toEqual('Resolver "invalidResolver" does not exist');
+      expect(e.message).toEqual('Operation "invalidOperation" not found');
     }
   });
 
   test('check if handler exists', async () => {
     const schema = new Schema({
-      corruptedResolver: new Resolver({
-        description: "Resolver that won't be called",
+      corruptedOperation: new Operation({
+        description: "Operation that won't be called",
         input: {},
-        output: 'boolean',
+        output: { type: 'boolean' },
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
-        resolver: undefined,
+        operation: undefined,
       }),
     });
 
-    expect(() => schema.execute('corruptedResolver', {})).rejects.toThrowError(
-      'Resolver "corruptedResolver" does not have a handler',
+    expect(() => schema.execute('corruptedOperation', {}, {})).rejects.toThrowError(
+      'Operation "corruptedOperation" does not have a handler',
     );
   });
 });

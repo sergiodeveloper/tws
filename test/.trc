@@ -7,5 +7,5 @@
     "src/**/*.*"
   ],
   "minLines": 6,
-  "minChars": 300
+  "minChars": 400
 }

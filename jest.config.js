@@ -18,6 +18,6 @@ module.exports = {
   ],
   testTimeout: 50,
   testMatch: [
-    '**/test/unit/**/*.spec.ts',
+    '**/test/**/*.spec.ts',
   ],
 };
