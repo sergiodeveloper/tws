@@ -110,15 +110,15 @@ export class Server {
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
     <title>TWS Playground</title>
     <meta name="description" content="Type-Safe Web Server Playground" />
-    <link rel="icon" type="image/png" href="https://www.unpkg.com/@tws-js/playground@0.1.2/dist/favicon.png">
-    <link href="https://www.unpkg.com/@tws-js/playground@0.1.2/dist/bundle.css" rel="stylesheet" type="text/css" />
+    <link rel="icon" type="image/png" href="https://www.unpkg.com/@tws-js/playground@1.0.0/dist/favicon.png">
+    <link href="https://www.unpkg.com/@tws-js/playground@1.0.0/dist/bundle.css" rel="stylesheet" type="text/css" />
     <script type="text/javascript">
       window.TWS_SCHEMA_PATH = '${options.schemaPath}';
       window.TWS_SERVER_PATH = '${options.serverPath}';
     </script>
   </head>
   <body>
-    <script src="https://www.unpkg.com/@tws-js/playground@0.1.2/dist/bundle.js" type="text/javascript"></script>
+    <script src="https://www.unpkg.com/@tws-js/playground@1.0.0/dist/bundle.js" type="text/javascript"></script>
   </body>
 </html>
 `;
