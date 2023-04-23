@@ -1,5 +1,5 @@
 .github/
-.vscode
+.vscode/
 !dist/
 node_modules/
 src/

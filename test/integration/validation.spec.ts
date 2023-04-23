@@ -2,7 +2,8 @@ import type {
   ObjectTypeDefinition,
   PrimitiveTypeDefinition,
   PrimitiveTypeName,
-} from '../../src/index';
+} from '@tws-js/common';
+
 import { Validation } from '../../src/validation';
 
 const OUTPUT_IS_REQUIRED = 'Output is required';

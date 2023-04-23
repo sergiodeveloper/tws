@@ -6,7 +6,7 @@ import type {
   EnumTypeDefinition,
   OutputTypeDefinition,
   PrimitiveOutputTypeDefinition,
-} from './schema';
+} from '@tws-js/common';
 
 export class ValidationError extends Error {
   constructor(message: string) {

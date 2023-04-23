@@ -1,13 +1,12 @@
 import * as express from 'express';
-
 import type {
   InputTypeDefinition,
   InvocationInputType,
   OutputType,
   OutputTypeDefinition,
-  OperationMap,
-  Schema,
-} from './schema';
+} from '@tws-js/common';
+
+import type { OperationMap, Schema } from './schema';
 import { ValidationError } from './validation';
 
 const DEFAULT_MAX_REQUEST_BODY_BYTES = 1000000;
