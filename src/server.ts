@@ -6,7 +6,7 @@ import type {
   OutputTypeDefinition,
 } from '@tws-js/common';
 
-import type { OperationMap, Schema } from './schema';
+import type { ClientEventMap, OperationMap, Schema, ServerEventMap } from './schema';
 import { ValidationError } from './validation';
 
 const DEFAULT_MAX_REQUEST_BODY_BYTES = 1000000;
@@ -17,8 +17,9 @@ const DEFAULT_ACCESS_CONTROL_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
 const ACCESS_CONTROL_HEADER = 'Access-Control-Allow-Origin';
 
-type Logger = {
+export type Logger = {
   error: (message: string) => void;
+  info?: (message: string) => void;
 };
 
 export class Server {
@@ -63,8 +64,12 @@ export class Server {
     };
   }
 
-  static async processServerRequest<T extends OperationMap>(options: {
-    schema: Schema<T>;
+  static async processServerRequest<
+    T extends OperationMap,
+    U extends ClientEventMap,
+    V extends ServerEventMap,
+  >(options: {
+    schema: Schema<T, U, V>;
     body: string;
     logger: Logger;
     headers: Record<string, string>;
@@ -123,11 +128,23 @@ export class Server {
 `;
   }
 
-  static processSchemaRequest<T extends OperationMap>(options: { schema: Schema<T> }): string {
-    const schema: Schema<T> = JSON.parse(JSON.stringify(options.schema));
+  static processSchemaRequest<
+    T extends OperationMap,
+    U extends ClientEventMap,
+    V extends ServerEventMap,
+  >(options: { schema: Schema<T, U, V> }): string {
+    const schema: Schema<T, U, V> = JSON.parse(JSON.stringify(options.schema));
 
     Object.keys(schema.operations).forEach((operation) => {
       delete schema.operations[operation].handler;
+    });
+
+    Object.keys(schema.clientEvents).forEach((operation) => {
+      delete schema.clientEvents[operation].handler;
+    });
+
+    Object.keys(schema.serverEvents).forEach((operation) => {
+      delete schema.serverEvents[operation].handler;
     });
 
     return JSON.stringify(schema);
@@ -154,8 +171,12 @@ export class Server {
     return body;
   }
 
-  static createExpressServerListener<T extends OperationMap>(options: {
-    schema: Schema<T>;
+  static createExpressServerListener<
+    T extends OperationMap,
+    U extends ClientEventMap,
+    V extends ServerEventMap,
+  >(options: {
+    schema: Schema<T, U, V>;
     maxRequestBodyBytes: number;
     logger: Logger;
     allowedOrigin: string;
@@ -226,10 +247,11 @@ export class Server {
     };
   }
 
-  static createExpressSchemaListener<T extends OperationMap>(options: {
-    schema: Schema<T>;
-    allowedOrigin: string;
-  }) {
+  static createExpressSchemaListener<
+    T extends OperationMap,
+    U extends ClientEventMap,
+    V extends ServerEventMap,
+  >(options: { schema: Schema<T, U, V>; allowedOrigin: string }) {
     return (
       req: unknown,
       res: {
@@ -268,8 +290,12 @@ export class Server {
   }
 }
 
-export function createServer<T extends OperationMap>(options: {
-  schema: Schema<T>;
+export function createServer<
+  T extends OperationMap,
+  U extends ClientEventMap,
+  V extends ServerEventMap,
+>(options: {
+  schema: Schema<T, U, V>;
   logger: Logger;
   maxRequestBodyBytes?: number;
   path?: string;

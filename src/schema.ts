@@ -14,7 +14,11 @@ export type OperationMetadata = {
   headers: Record<string, string>;
 };
 
-export class Operation<TInput extends InputTypeDefinition, TOutput extends OutputTypeDefinition> {
+export class BaseOperation<
+  TInput extends InputTypeDefinition,
+  TOutput extends OutputTypeDefinition,
+> {
+  public type = 'operation';
   public title?: string;
   public description?: string;
   public input: TInput;
@@ -50,15 +54,60 @@ export class Operation<TInput extends InputTypeDefinition, TOutput extends Outpu
   }
 }
 
+export class Operation<
+  TInput extends InputTypeDefinition,
+  TOutput extends OutputTypeDefinition,
+> extends BaseOperation<TInput, TOutput> {
+  public type = 'operation';
+}
+
+export class ClientEvent<
+  TInput extends InputTypeDefinition,
+  TOutput extends OutputTypeDefinition,
+> extends Operation<TInput, TOutput> {
+  public type = 'clientEvent';
+}
+
+export class ServerEvent<
+  TInput extends InputTypeDefinition,
+  TOutput extends OutputTypeDefinition,
+> extends Operation<TInput, TOutput> {
+  public type = 'serverEvent';
+
+  constructor(options: { title?: string; description?: string; input: TInput; output: TOutput }) {
+    super({
+      title: options.title,
+      description: options.description,
+      input: options.input,
+      output: options.output,
+      handler: () => {
+        throw new Error('Server event handlers are not allowed');
+      },
+    });
+  }
+}
+
 export type OperationMap = {
   [name: string]: Operation<InputTypeDefinition, OutputTypeDefinition>;
 };
 
-export class Schema<R extends OperationMap> {
-  operations: R;
+export type ClientEventMap = {
+  [name: string]: ClientEvent<InputTypeDefinition, OutputTypeDefinition>;
+};
 
-  constructor(operations: R) {
-    this.operations = operations;
+export type ServerEventMap = {
+  [name: string]: ServerEvent<InputTypeDefinition, OutputTypeDefinition>;
+};
+
+export class Schema<R extends OperationMap, S extends ClientEventMap, T extends ServerEventMap> {
+  operations: R;
+  clientEvents: S;
+  serverEvents: T;
+
+  constructor(options: { operations?: R; clientEvents?: S; serverEvents?: T }) {
+    this.operations = options.operations || ({} as R);
+    this.clientEvents = options.clientEvents || ({} as S);
+    this.serverEvents = options.serverEvents || ({} as T);
   }
 
   async execute<OperationName extends keyof R>(
