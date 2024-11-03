@@ -257,7 +257,7 @@ describe('Server', () => {
     });
 
     expect(result).toMatch(
-      /^<!DOCTYPE html>.+<title>TWS Playground<\/title>.+<body>.+<script.+<\/script>.+<\/body>.+<\/html>/s,
+      /^<!doctype html>.+<title>TWS Playground<\/title>.+<body>.+<div.+<\/div>.+<\/body>.+<\/html>/s,
     );
   });
 
