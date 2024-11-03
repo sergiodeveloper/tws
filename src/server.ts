@@ -102,22 +102,26 @@ export class Server {
   }
 
   static processPlaygroundRequest(options: { schemaPath: string; serverPath: string }): string {
-    return `<!DOCTYPE html>
-<html>
+    return `<!doctype html>
+<html lang="en">
   <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <meta charset="UTF-8" />
+    <link
+      rel="icon"
+      type="image/png"
+      href="https://cdn.jsdelivr.net/npm/@tws-js/playground@2.0.0/dist/favicon.png"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>TWS Playground</title>
-    <meta name="description" content="Type-Safe Web Server Playground" />
-    <link rel="icon" type="image/png" href="https://cdn.jsdelivr.net/npm/@tws-js/playground@1.1.0/dist/favicon.png">
-    <link href="https://cdn.jsdelivr.net/npm/@tws-js/playground@1.1.0/dist/bundle.css" rel="stylesheet" type="text/css" />
     <script type="text/javascript">
       window.TWS_SCHEMA_PATH = '${options.schemaPath}';
       window.TWS_SERVER_PATH = '${options.serverPath}';
     </script>
+    <script type="module" crossorigin src="https://cdn.jsdelivr.net/npm/@tws-js/playground@2.0.0/dist/bundle.js"></script>
+    <link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/npm/@tws-js/playground@2.0.0/dist/bundle.css">
   </head>
   <body>
-    <script src="https://cdn.jsdelivr.net/npm/@tws-js/playground@1.1.0/dist/bundle.js" type="text/javascript"></script>
+    <div id="root"></div>
   </body>
 </html>
 `;
