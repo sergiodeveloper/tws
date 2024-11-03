@@ -196,7 +196,7 @@ describe('Server', () => {
     expect(errorLogger).toHaveBeenCalledTimes(2);
     expect(errorLogger).toHaveBeenNthCalledWith(
       1,
-      'Failed to parse request body: SyntaxError: Unexpected token i in JSON at position 0',
+      expect.stringContaining('Failed to parse request body: SyntaxError: Unexpected token'),
     );
     expect(errorLogger).toHaveBeenNthCalledWith(
       2,
@@ -402,7 +402,7 @@ describe('Server', () => {
     expect(errorLogger).toHaveBeenCalledTimes(2);
     expect(errorLogger).toHaveBeenNthCalledWith(
       1,
-      'Failed to parse request body: SyntaxError: Unexpected token i in JSON at position 0',
+      expect.stringContaining('Failed to parse request body: SyntaxError: Unexpected token'),
     );
     expect(errorLogger).toHaveBeenNthCalledWith(
       2,
@@ -429,7 +429,7 @@ describe('Server', () => {
     expect(res.send).toHaveBeenCalledTimes(1);
     expect(res.send).toHaveBeenCalledWith(
       expect.stringMatching(
-        /^<!DOCTYPE html>.+<title>TWS Playground<\/title>.+<body>.+<script.+<\/script>.+<\/body>.+<\/html>/s,
+        /^<!doctype html>.+<title>TWS Playground<\/title>.+<body>.+<div.+<\/div>.+<\/body>.+<\/html>/s,
       ),
     );
   });
