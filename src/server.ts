@@ -109,7 +109,7 @@ export class Server {
     <link
       rel="icon"
       type="image/png"
-      href="https://cdn.jsdelivr.net/npm/@tws-js/playground@2.0.0/dist/favicon.png"
+      href="https://cdn.jsdelivr.net/npm/@tws-js/playground@2.0.1/dist/favicon.png"
     />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>TWS Playground</title>
@@ -117,8 +117,8 @@ export class Server {
       window.TWS_SCHEMA_PATH = '${options.schemaPath}';
       window.TWS_SERVER_PATH = '${options.serverPath}';
     </script>
-    <script type="module" crossorigin src="https://cdn.jsdelivr.net/npm/@tws-js/playground@2.0.0/dist/bundle.js"></script>
-    <link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/npm/@tws-js/playground@2.0.0/dist/bundle.css">
+    <script type="module" crossorigin src="https://cdn.jsdelivr.net/npm/@tws-js/playground@2.0.1/dist/bundle.js"></script>
+    <link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/npm/@tws-js/playground@2.0.1/dist/bundle.css">
   </head>
   <body>
     <div id="root"></div>

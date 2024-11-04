@@ -1,5 +1,5 @@
 {
-  "version": "1.0.5",
+  "version": "1.0.6",
   "name": "@tws-js/server",
   "description": "Type-Safe Web Server Framework",
   "license": "MIT",
