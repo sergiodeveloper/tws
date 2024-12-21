@@ -1,0 +1,4 @@
+[test]
+coverage = true
+coverageThreshold = { line = 1.0 }
+timeout = 50

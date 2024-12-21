@@ -3,4 +3,5 @@
     "source.fixAll.eslint": "explicit"
   },
   "files.insertFinalNewline": true,
+  "jestrunner.jestCommand": "APP_ENV=local bun test --timeout 50"
 }
