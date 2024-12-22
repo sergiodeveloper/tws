@@ -1,16 +1,31 @@
-import { Validation } from '../../src/validation';
+import { SafeError, Validation } from '../../src/validation';
 
-const OUTPUT_REQUIRED_ERROR = 'Output is required';
+const OUTPUT_REQUIRED_ERROR = '"Output is required"';
 
 describe('Validation', () => {
   afterEach(() => {
     jest.restoreAllMocks();
   });
 
-  test('constructor', async () => {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    new Validation();
+  test('SafeError.constructor successfully', async () => {
+    const error = new SafeError('test');
+    expect(error.message).toBe('test');
+  });
+
+  test('SafeError.constructor with a long message', async () => {
+    const longMessage = 'a'.repeat(1000);
+    const error = new SafeError(longMessage);
+    expect(error.message).toHaveLength(150);
+  });
+
+  test('SafeError.toString successfully', async () => {
+    const error = new SafeError('test');
+    expect(error.toString()).toBe('test');
+  });
+
+  test('SafeError.toJSON successfully', async () => {
+    const error = new SafeError('test');
+    expect(error.toJSON()).toEqual('test');
   });
 
   test('unknownIsObject', async () => {
@@ -28,7 +43,7 @@ describe('Validation', () => {
 
     expect(() => {
       Validation.validateString('myString', 1);
-    }).toThrowError('"myString" must be a string');
+    }).toThrowErrorMatchingInlineSnapshot('""myString" must be a string"');
   });
 
   test('validateInt', async () => {
@@ -36,7 +51,7 @@ describe('Validation', () => {
 
     expect(() => {
       Validation.validateInt('test', 'test');
-    }).toThrowError('"test" must be a valid integer');
+    }).toThrowErrorMatchingInlineSnapshot('""test" must be a valid integer"');
   });
 
   test('validateFloat', async () => {
@@ -44,7 +59,7 @@ describe('Validation', () => {
 
     expect(() => {
       Validation.validateFloat('test', 'test');
-    }).toThrowError('"test" must be a valid float');
+    }).toThrowErrorMatchingInlineSnapshot('""test" must be a valid float"');
   });
 
   test('validateBoolean', async () => {
@@ -52,10 +67,10 @@ describe('Validation', () => {
 
     expect(() => {
       Validation.validateBoolean('test', 'test');
-    }).toThrowError('"test" must be a boolean');
+    }).toThrowErrorMatchingInlineSnapshot('""test" must be a boolean"');
   });
 
-  test('validatePrimitiveInput', async () => {
+  test('validatePrimitiveInput successfully', async () => {
     expect(Validation.validatePrimitiveInput('test', 'test', { type: 'string' })).toBe('test');
 
     expect(Validation.validatePrimitiveInput('test', 1, { type: 'int' })).toBe(1);
@@ -75,7 +90,7 @@ describe('Validation', () => {
     expect(result).toBe('test');
   });
 
-  test('validatePrimitiveInput with empty value', async () => {
+  test('validatePrimitiveInput with empty value not required', async () => {
     const result = Validation.validatePrimitiveInput('test', undefined, {
       type: 'string',
       description: '',
@@ -91,7 +106,7 @@ describe('Validation', () => {
         type: 'string',
         description: '',
       });
-    }).toThrowError('"field" is required');
+    }).toThrowErrorMatchingInlineSnapshot('""field" is required"');
   });
 
   test('validatePrimitiveInput with wrong type', async () => {
@@ -100,7 +115,7 @@ describe('Validation', () => {
         type: 'string',
         description: '',
       });
-    }).toThrowError('"test" must be a string');
+    }).toThrowErrorMatchingInlineSnapshot('""test" must be a string"');
   });
 
   test('validatePrimitiveInput with unknown type', async () => {
@@ -111,10 +126,10 @@ describe('Validation', () => {
         type: 'unknown',
         description: '',
       });
-    }).toThrowError('Unknown primitive type "unknown" for "test"');
+    }).toThrowErrorMatchingInlineSnapshot('"Unknown primitive type "unknown" for "test""');
   });
 
-  test('validateObjectInput', async () => {
+  test('validateObjectInput successfully', async () => {
     jest.spyOn(Validation, 'validateArrayInput').mockImplementation(() => 10);
     jest.spyOn(Validation, 'validatePrimitiveInput').mockImplementation(() => 30);
     jest.spyOn(Validation, 'validateEnumInput').mockImplementation(() => 'test');
@@ -146,12 +161,12 @@ describe('Validation', () => {
 
     expect(result).toEqual(undefined);
 
-    expect(Validation.validateArrayInput).not.toBeCalled();
-    expect(Validation.validatePrimitiveInput).toBeCalledWith('test', 'value', {
+    expect(Validation.validateArrayInput).not.toHaveBeenCalled();
+    expect(Validation.validatePrimitiveInput).toHaveBeenCalledWith('test', 'value', {
       type: 'string',
       description: '',
     });
-    expect(Validation.validateEnumInput).not.toBeCalled();
+    expect(Validation.validateEnumInput).not.toHaveBeenCalled();
   });
 
   test('validateObjectInput with empty value', async () => {
@@ -168,9 +183,9 @@ describe('Validation', () => {
 
     expect(result).toEqual(undefined);
 
-    expect(Validation.validateArrayInput).not.toBeCalled();
-    expect(Validation.validatePrimitiveInput).not.toBeCalled();
-    expect(Validation.validateEnumInput).not.toBeCalled();
+    expect(Validation.validateArrayInput).not.toHaveBeenCalled();
+    expect(Validation.validatePrimitiveInput).not.toHaveBeenCalled();
+    expect(Validation.validateEnumInput).not.toHaveBeenCalled();
   });
 
   test('validateObjectInput with empty value and no default', async () => {
@@ -184,11 +199,11 @@ describe('Validation', () => {
         description: '',
         properties: {},
       });
-    }).toThrowError('"test" is required');
+    }).toThrowErrorMatchingInlineSnapshot('""test" is required"');
 
-    expect(Validation.validateArrayInput).not.toBeCalled();
-    expect(Validation.validatePrimitiveInput).not.toBeCalled();
-    expect(Validation.validateEnumInput).not.toBeCalled();
+    expect(Validation.validateArrayInput).not.toHaveBeenCalled();
+    expect(Validation.validatePrimitiveInput).not.toHaveBeenCalled();
+    expect(Validation.validateEnumInput).not.toHaveBeenCalled();
   });
 
   test('validateObjectInput with wrong type', async () => {
@@ -208,11 +223,11 @@ describe('Validation', () => {
           properties: {},
         },
       );
-    }).toThrowError('"test" must be an object');
+    }).toThrowErrorMatchingInlineSnapshot('""test" must be an object"');
 
-    expect(Validation.validateArrayInput).not.toBeCalled();
-    expect(Validation.validatePrimitiveInput).not.toBeCalled();
-    expect(Validation.validateEnumInput).not.toBeCalled();
+    expect(Validation.validateArrayInput).not.toHaveBeenCalled();
+    expect(Validation.validatePrimitiveInput).not.toHaveBeenCalled();
+    expect(Validation.validateEnumInput).not.toHaveBeenCalled();
   });
 
   test('validateObjectInput with array attribute', async () => {
@@ -250,15 +265,15 @@ describe('Validation', () => {
 
     expect(result).toEqual(undefined);
 
-    expect(Validation.validateArrayInput).toBeCalledWith('test', ['value'], {
+    expect(Validation.validateArrayInput).toHaveBeenCalledWith('test', ['value'], {
       type: 'array',
       item: {
         type: 'string',
         description: '',
       },
     });
-    expect(Validation.validatePrimitiveInput).not.toBeCalled();
-    expect(Validation.validateEnumInput).not.toBeCalled();
+    expect(Validation.validatePrimitiveInput).not.toHaveBeenCalled();
+    expect(Validation.validateEnumInput).not.toHaveBeenCalled();
   });
 
   test('validateObjectInput with object attribute', async () => {
@@ -298,9 +313,9 @@ describe('Validation', () => {
 
     expect(result).toEqual(undefined);
 
-    expect(Validation.validateArrayInput).not.toBeCalled();
-    expect(Validation.validatePrimitiveInput).not.toBeCalled();
-    expect(Validation.validateEnumInput).not.toBeCalled();
+    expect(Validation.validateArrayInput).not.toHaveBeenCalled();
+    expect(Validation.validatePrimitiveInput).not.toHaveBeenCalled();
+    expect(Validation.validateEnumInput).not.toHaveBeenCalled();
   });
 
   test('validateObjectInput with enum attribute', async () => {
@@ -334,9 +349,9 @@ describe('Validation', () => {
 
     expect(result).toEqual(undefined);
 
-    expect(Validation.validateArrayInput).not.toBeCalled();
-    expect(Validation.validatePrimitiveInput).not.toBeCalled();
-    expect(Validation.validateEnumInput).toBeCalledWith('test', 'value', {
+    expect(Validation.validateArrayInput).not.toHaveBeenCalled();
+    expect(Validation.validatePrimitiveInput).not.toHaveBeenCalled();
+    expect(Validation.validateEnumInput).toHaveBeenCalledWith('test', 'value', {
       type: 'enum',
       values: {},
     });
@@ -376,7 +391,7 @@ describe('Validation', () => {
         },
         defaultValue: 'value2',
       });
-    }).toThrowError('Default value for "test" must be one of: value');
+    }).toThrowErrorMatchingInlineSnapshot('"Default value for "test" must be one of: value"');
   });
 
   test('validateEnumInput with missing value', async () => {
@@ -388,7 +403,7 @@ describe('Validation', () => {
           value: {},
         },
       });
-    }).toThrowError('"test" is required');
+    }).toThrowErrorMatchingInlineSnapshot('""test" is required"');
   });
 
   test('validateEnumInput with non-string', async () => {
@@ -399,7 +414,7 @@ describe('Validation', () => {
           value: {},
         },
       });
-    }).toThrowError('"test" must be a string');
+    }).toThrowErrorMatchingInlineSnapshot('""test" must be a string"');
   });
 
   test('validateEnumInput with invalid value', async () => {
@@ -410,7 +425,7 @@ describe('Validation', () => {
           value: {},
         },
       });
-    }).toThrowError('"test" must be one of: value');
+    }).toThrowErrorMatchingInlineSnapshot('""test" must be one of: value"');
   });
 
   test('validateArrayInput', async () => {
@@ -431,8 +446,8 @@ describe('Validation', () => {
 
     expect(input).toEqual([20]);
 
-    expect(Validation.validateObjectInput).not.toBeCalled();
-    expect(Validation.validatePrimitiveInput).toBeCalledWith('test', 'value', {
+    expect(Validation.validateObjectInput).not.toHaveBeenCalled();
+    expect(Validation.validatePrimitiveInput).toHaveBeenCalledWith('test', 'value', {
       type: 'string',
       description: '',
     });
@@ -450,10 +465,10 @@ describe('Validation', () => {
           description: '',
         },
       });
-    }).toThrowError('"field" is required');
+    }).toThrowErrorMatchingInlineSnapshot('""field" is required"');
 
-    expect(Validation.validateObjectInput).not.toBeCalled();
-    expect(Validation.validatePrimitiveInput).not.toBeCalled();
+    expect(Validation.validateObjectInput).not.toHaveBeenCalled();
+    expect(Validation.validatePrimitiveInput).not.toHaveBeenCalled();
   });
 
   test('validateArrayInput with wrong type', async () => {
@@ -474,10 +489,10 @@ describe('Validation', () => {
           },
         },
       );
-    }).toThrowError('"test" must be an array');
+    }).toThrowErrorMatchingInlineSnapshot('""test" must be an array"');
 
-    expect(Validation.validateObjectInput).not.toBeCalled();
-    expect(Validation.validatePrimitiveInput).not.toBeCalled();
+    expect(Validation.validateObjectInput).not.toHaveBeenCalled();
+    expect(Validation.validatePrimitiveInput).not.toHaveBeenCalled();
   });
 
   test('validateArrayInput with a list of objects', async () => {
@@ -518,7 +533,7 @@ describe('Validation', () => {
       },
     ]);
 
-    expect(Validation.validateObjectInput).toBeCalledWith(
+    expect(Validation.validateObjectInput).toHaveBeenCalledWith(
       'test',
       {
         test: 'value',
@@ -534,7 +549,7 @@ describe('Validation', () => {
         },
       },
     );
-    expect(Validation.validatePrimitiveInput).not.toBeCalled();
+    expect(Validation.validatePrimitiveInput).not.toHaveBeenCalled();
   });
 
   test('validateArrayInput with a list of arrays', async () => {
@@ -561,7 +576,7 @@ describe('Validation', () => {
 
     expect(result).toEqual(undefined);
 
-    expect(Validation.validateObjectInput).not.toBeCalled();
+    expect(Validation.validateObjectInput).not.toHaveBeenCalled();
     expect(Validation.validateArrayInput).toHaveBeenCalledTimes(2);
     expect(Validation.validateArrayInput).toHaveBeenNthCalledWith(2, 'test', ['value'], {
       type: 'array',
@@ -596,9 +611,9 @@ describe('Validation', () => {
 
     expect(result).toEqual(undefined);
 
-    expect(Validation.validateObjectInput).not.toBeCalled();
-    expect(Validation.validatePrimitiveInput).not.toBeCalled();
-    expect(Validation.validateEnumInput).toBeCalledWith('test', 'value', {
+    expect(Validation.validateObjectInput).not.toHaveBeenCalled();
+    expect(Validation.validatePrimitiveInput).not.toHaveBeenCalled();
+    expect(Validation.validateEnumInput).toHaveBeenCalledWith('test', 'value', {
       type: 'enum',
       values: {
         value: {},
@@ -636,10 +651,10 @@ describe('Validation', () => {
       test: 'value',
     });
 
-    expect(Validation.validateArrayInput).not.toBeCalled();
-    expect(Validation.validateObjectInput).not.toBeCalled();
-    expect(Validation.validateEnumInput).not.toBeCalled();
-    expect(Validation.validatePrimitiveInput).toBeCalledWith('test', 'value', {
+    expect(Validation.validateArrayInput).not.toHaveBeenCalled();
+    expect(Validation.validateObjectInput).not.toHaveBeenCalled();
+    expect(Validation.validateEnumInput).not.toHaveBeenCalled();
+    expect(Validation.validatePrimitiveInput).toHaveBeenCalledWith('test', 'value', {
       type: 'string',
       description: '',
     });
@@ -663,12 +678,12 @@ describe('Validation', () => {
           },
         },
       ),
-    ).toThrowError('Input is required');
+    ).toThrowErrorMatchingInlineSnapshot('"Input is required"');
 
-    expect(Validation.validateArrayInput).not.toBeCalled();
-    expect(Validation.validateObjectInput).not.toBeCalled();
-    expect(Validation.validateEnumInput).not.toBeCalled();
-    expect(Validation.validatePrimitiveInput).not.toBeCalled();
+    expect(Validation.validateArrayInput).not.toHaveBeenCalled();
+    expect(Validation.validateObjectInput).not.toHaveBeenCalled();
+    expect(Validation.validateEnumInput).not.toHaveBeenCalled();
+    expect(Validation.validatePrimitiveInput).not.toHaveBeenCalled();
   });
 
   test('validateRootObjectInput with a non object', async () => {
@@ -689,12 +704,12 @@ describe('Validation', () => {
           },
         },
       ),
-    ).toThrowError('Input must be an object');
+    ).toThrowErrorMatchingInlineSnapshot('"Input must be an object"');
 
-    expect(Validation.validateArrayInput).not.toBeCalled();
-    expect(Validation.validateObjectInput).not.toBeCalled();
-    expect(Validation.validateEnumInput).not.toBeCalled();
-    expect(Validation.validatePrimitiveInput).not.toBeCalled();
+    expect(Validation.validateArrayInput).not.toHaveBeenCalled();
+    expect(Validation.validateObjectInput).not.toHaveBeenCalled();
+    expect(Validation.validateEnumInput).not.toHaveBeenCalled();
+    expect(Validation.validatePrimitiveInput).not.toHaveBeenCalled();
   });
 
   test('validateRootObjectInput with array attribute', async () => {
@@ -724,7 +739,7 @@ describe('Validation', () => {
 
     expect(result).toEqual(input);
 
-    expect(Validation.validateArrayInput).toBeCalledWith('array', [10], {
+    expect(Validation.validateArrayInput).toHaveBeenCalledWith('array', [10], {
       type: 'array',
       item: {
         type: 'int',
@@ -732,9 +747,9 @@ describe('Validation', () => {
       },
     });
 
-    expect(Validation.validateObjectInput).not.toBeCalled();
-    expect(Validation.validateEnumInput).not.toBeCalled();
-    expect(Validation.validatePrimitiveInput).not.toBeCalled();
+    expect(Validation.validateObjectInput).not.toHaveBeenCalled();
+    expect(Validation.validateEnumInput).not.toHaveBeenCalled();
+    expect(Validation.validatePrimitiveInput).not.toHaveBeenCalled();
   });
 
   test('validateRootObjectInput with object attribute', async () => {
@@ -768,7 +783,7 @@ describe('Validation', () => {
 
     expect(result).toEqual(input);
 
-    expect(Validation.validateObjectInput).toBeCalledWith(
+    expect(Validation.validateObjectInput).toHaveBeenCalledWith(
       'myObject',
       {
         attribute: true,
@@ -784,9 +799,9 @@ describe('Validation', () => {
       },
     );
 
-    expect(Validation.validateArrayInput).not.toBeCalled();
-    expect(Validation.validateEnumInput).not.toBeCalled();
-    expect(Validation.validatePrimitiveInput).not.toBeCalled();
+    expect(Validation.validateArrayInput).not.toHaveBeenCalled();
+    expect(Validation.validateEnumInput).not.toHaveBeenCalled();
+    expect(Validation.validatePrimitiveInput).not.toHaveBeenCalled();
   });
 
   test('validateRootObjectInput with enum attribute', async () => {
@@ -815,15 +830,15 @@ describe('Validation', () => {
 
     expect(result).toEqual(input);
 
-    expect(Validation.validateArrayInput).not.toBeCalled();
-    expect(Validation.validateObjectInput).not.toBeCalled();
-    expect(Validation.validateEnumInput).toBeCalledWith('myEnum', 'value', {
+    expect(Validation.validateArrayInput).not.toHaveBeenCalled();
+    expect(Validation.validateObjectInput).not.toHaveBeenCalled();
+    expect(Validation.validateEnumInput).toHaveBeenCalledWith('myEnum', 'value', {
       type: 'enum',
       values: {
         value: {},
       },
     });
-    expect(Validation.validatePrimitiveInput).not.toBeCalled();
+    expect(Validation.validatePrimitiveInput).not.toHaveBeenCalled();
   });
 
   test('validateAndCleanPrimitiveOutput with empty output', async () => {
@@ -839,10 +854,10 @@ describe('Validation', () => {
 
     expect(result).toBeUndefined();
 
-    expect(Validation.validateString).not.toBeCalled();
-    expect(Validation.validateInt).not.toBeCalled();
-    expect(Validation.validateFloat).not.toBeCalled();
-    expect(Validation.validateBoolean).not.toBeCalled();
+    expect(Validation.validateString).not.toHaveBeenCalled();
+    expect(Validation.validateInt).not.toHaveBeenCalled();
+    expect(Validation.validateFloat).not.toHaveBeenCalled();
+    expect(Validation.validateBoolean).not.toHaveBeenCalled();
   });
 
   test('validateAndCleanPrimitiveOutput with missing output', async () => {
@@ -855,12 +870,12 @@ describe('Validation', () => {
       Validation.validateAndCleanPrimitiveOutput(null, undefined, {
         type: 'string',
       }),
-    ).toThrowError(OUTPUT_REQUIRED_ERROR);
+    ).toThrowErrorMatchingInlineSnapshot(OUTPUT_REQUIRED_ERROR);
 
-    expect(Validation.validateString).not.toBeCalled();
-    expect(Validation.validateInt).not.toBeCalled();
-    expect(Validation.validateFloat).not.toBeCalled();
-    expect(Validation.validateBoolean).not.toBeCalled();
+    expect(Validation.validateString).not.toHaveBeenCalled();
+    expect(Validation.validateInt).not.toHaveBeenCalled();
+    expect(Validation.validateFloat).not.toHaveBeenCalled();
+    expect(Validation.validateBoolean).not.toHaveBeenCalled();
   });
 
   test('validateAndCleanPrimitiveOutput with missing named output', async () => {
@@ -873,12 +888,12 @@ describe('Validation', () => {
       Validation.validateAndCleanPrimitiveOutput('test', undefined, {
         type: 'string',
       }),
-    ).toThrowError('Output "test" is required');
+    ).toThrowErrorMatchingInlineSnapshot('"Output "test" is required"');
 
-    expect(Validation.validateString).not.toBeCalled();
-    expect(Validation.validateInt).not.toBeCalled();
-    expect(Validation.validateFloat).not.toBeCalled();
-    expect(Validation.validateBoolean).not.toBeCalled();
+    expect(Validation.validateString).not.toHaveBeenCalled();
+    expect(Validation.validateInt).not.toHaveBeenCalled();
+    expect(Validation.validateFloat).not.toHaveBeenCalled();
+    expect(Validation.validateBoolean).not.toHaveBeenCalled();
   });
 
   test('validateAndCleanPrimitiveOutput with string', async () => {
@@ -893,11 +908,11 @@ describe('Validation', () => {
 
     expect(result).toEqual('test');
 
-    expect(Validation.validateString).toBeCalledWith('', 'test');
+    expect(Validation.validateString).toHaveBeenCalledWith('', 'test');
 
-    expect(Validation.validateInt).not.toBeCalled();
-    expect(Validation.validateFloat).not.toBeCalled();
-    expect(Validation.validateBoolean).not.toBeCalled();
+    expect(Validation.validateInt).not.toHaveBeenCalled();
+    expect(Validation.validateFloat).not.toHaveBeenCalled();
+    expect(Validation.validateBoolean).not.toHaveBeenCalled();
   });
 
   test('validateAndCleanPrimitiveOutput with invalid string', async () => {
@@ -912,20 +927,20 @@ describe('Validation', () => {
       Validation.validateAndCleanPrimitiveOutput(null, 50, {
         type: 'string',
       }),
-    ).toThrowError('Output must be a string');
+    ).toThrowErrorMatchingInlineSnapshot('"Output must be a string"');
 
     expect(() =>
       Validation.validateAndCleanPrimitiveOutput('test', 50, {
         type: 'string',
       }),
-    ).toThrowError('Output "test" must be a string');
+    ).toThrowErrorMatchingInlineSnapshot('"Output "test" must be a string"');
 
-    expect(Validation.validateString).toBeCalledWith('', 50);
-    expect(Validation.validateString).toBeCalledWith('test', 50);
+    expect(Validation.validateString).toHaveBeenCalledWith('', 50);
+    expect(Validation.validateString).toHaveBeenCalledWith('test', 50);
 
-    expect(Validation.validateInt).not.toBeCalled();
-    expect(Validation.validateFloat).not.toBeCalled();
-    expect(Validation.validateBoolean).not.toBeCalled();
+    expect(Validation.validateInt).not.toHaveBeenCalled();
+    expect(Validation.validateFloat).not.toHaveBeenCalled();
+    expect(Validation.validateBoolean).not.toHaveBeenCalled();
   });
 
   test('validateAndCleanPrimitiveOutput with int', async () => {
@@ -940,11 +955,11 @@ describe('Validation', () => {
 
     expect(result).toEqual(10);
 
-    expect(Validation.validateInt).toBeCalledWith('', 10);
+    expect(Validation.validateInt).toHaveBeenCalledWith('', 10);
 
-    expect(Validation.validateString).not.toBeCalled();
-    expect(Validation.validateFloat).not.toBeCalled();
-    expect(Validation.validateBoolean).not.toBeCalled();
+    expect(Validation.validateString).not.toHaveBeenCalled();
+    expect(Validation.validateFloat).not.toHaveBeenCalled();
+    expect(Validation.validateBoolean).not.toHaveBeenCalled();
   });
 
   test('validateAndCleanPrimitiveOutput with invalid int', async () => {
@@ -959,20 +974,20 @@ describe('Validation', () => {
       Validation.validateAndCleanPrimitiveOutput(null, 3.5, {
         type: 'int',
       }),
-    ).toThrowError('Output must be an integer');
+    ).toThrowErrorMatchingInlineSnapshot('"Output must be an integer, got: 3.5"');
 
     expect(() =>
       Validation.validateAndCleanPrimitiveOutput('test', 3.5, {
         type: 'int',
       }),
-    ).toThrowError('Output "test" must be an integer');
+    ).toThrowErrorMatchingInlineSnapshot('"Output "test" must be an integer"');
 
-    expect(Validation.validateInt).toBeCalledWith('', 3.5);
-    expect(Validation.validateInt).toBeCalledWith('test', 3.5);
+    expect(Validation.validateInt).toHaveBeenCalledWith('', 3.5);
+    expect(Validation.validateInt).toHaveBeenCalledWith('test', 3.5);
 
-    expect(Validation.validateString).not.toBeCalled();
-    expect(Validation.validateFloat).not.toBeCalled();
-    expect(Validation.validateBoolean).not.toBeCalled();
+    expect(Validation.validateString).not.toHaveBeenCalled();
+    expect(Validation.validateFloat).not.toHaveBeenCalled();
+    expect(Validation.validateBoolean).not.toHaveBeenCalled();
   });
 
   test('validateAndCleanPrimitiveOutput with float', async () => {
@@ -987,11 +1002,11 @@ describe('Validation', () => {
 
     expect(result).toEqual(3.5);
 
-    expect(Validation.validateFloat).toBeCalledWith('', 3.5);
+    expect(Validation.validateFloat).toHaveBeenCalledWith('', 3.5);
 
-    expect(Validation.validateString).not.toBeCalled();
-    expect(Validation.validateInt).not.toBeCalled();
-    expect(Validation.validateBoolean).not.toBeCalled();
+    expect(Validation.validateString).not.toHaveBeenCalled();
+    expect(Validation.validateInt).not.toHaveBeenCalled();
+    expect(Validation.validateBoolean).not.toHaveBeenCalled();
   });
 
   test('validateAndCleanPrimitiveOutput with invalid float', async () => {
@@ -1006,20 +1021,20 @@ describe('Validation', () => {
       Validation.validateAndCleanPrimitiveOutput(null, 'test', {
         type: 'float',
       }),
-    ).toThrowError('Output must be a float');
+    ).toThrowErrorMatchingInlineSnapshot('"Output must be a float"');
 
     expect(() =>
       Validation.validateAndCleanPrimitiveOutput('a', 'test', {
         type: 'float',
       }),
-    ).toThrowError('Output "a" must be a float');
+    ).toThrowErrorMatchingInlineSnapshot('"Output "a" must be a float"');
 
-    expect(Validation.validateFloat).toBeCalledWith('', 'test');
-    expect(Validation.validateFloat).toBeCalledWith('a', 'test');
+    expect(Validation.validateFloat).toHaveBeenCalledWith('', 'test');
+    expect(Validation.validateFloat).toHaveBeenCalledWith('a', 'test');
 
-    expect(Validation.validateString).not.toBeCalled();
-    expect(Validation.validateInt).not.toBeCalled();
-    expect(Validation.validateBoolean).not.toBeCalled();
+    expect(Validation.validateString).not.toHaveBeenCalled();
+    expect(Validation.validateInt).not.toHaveBeenCalled();
+    expect(Validation.validateBoolean).not.toHaveBeenCalled();
   });
 
   test('validateAndCleanPrimitiveOutput with boolean', async () => {
@@ -1034,11 +1049,11 @@ describe('Validation', () => {
 
     expect(result).toEqual(true);
 
-    expect(Validation.validateBoolean).toBeCalledWith('', true);
+    expect(Validation.validateBoolean).toHaveBeenCalledWith('', true);
 
-    expect(Validation.validateString).not.toBeCalled();
-    expect(Validation.validateInt).not.toBeCalled();
-    expect(Validation.validateFloat).not.toBeCalled();
+    expect(Validation.validateString).not.toHaveBeenCalled();
+    expect(Validation.validateInt).not.toHaveBeenCalled();
+    expect(Validation.validateFloat).not.toHaveBeenCalled();
   });
 
   test('validateAndCleanPrimitiveOutput with invalid boolean', async () => {
@@ -1053,20 +1068,20 @@ describe('Validation', () => {
       Validation.validateAndCleanPrimitiveOutput(null, 10, {
         type: 'boolean',
       }),
-    ).toThrowError('Output must be a boolean');
+    ).toThrowErrorMatchingInlineSnapshot('"Output must be a boolean"');
 
     expect(() =>
       Validation.validateAndCleanPrimitiveOutput('a', 10, {
         type: 'boolean',
       }),
-    ).toThrowError('Output "a" must be a boolean');
+    ).toThrowErrorMatchingInlineSnapshot('"Output "a" must be a boolean"');
 
-    expect(Validation.validateBoolean).toBeCalledWith('', 10);
-    expect(Validation.validateBoolean).toBeCalledWith('a', 10);
+    expect(Validation.validateBoolean).toHaveBeenCalledWith('', 10);
+    expect(Validation.validateBoolean).toHaveBeenCalledWith('a', 10);
 
-    expect(Validation.validateString).not.toBeCalled();
-    expect(Validation.validateInt).not.toBeCalled();
-    expect(Validation.validateFloat).not.toBeCalled();
+    expect(Validation.validateString).not.toHaveBeenCalled();
+    expect(Validation.validateInt).not.toHaveBeenCalled();
+    expect(Validation.validateFloat).not.toHaveBeenCalled();
   });
 
   test('validateAndCleanEnumOutput', async () => {
@@ -1084,14 +1099,14 @@ describe('Validation', () => {
         type: 'enum',
         values: { a: {}, b: {} },
       }),
-    ).toThrowError('Output must be a string');
+    ).toThrowErrorMatchingInlineSnapshot('"Output must be a string"');
 
     expect(() =>
       Validation.validateAndCleanEnumOutput('a', 10, {
         type: 'enum',
         values: { a: {}, b: {} },
       }),
-    ).toThrowError('Output "a" must be a string');
+    ).toThrowErrorMatchingInlineSnapshot('"Output "a" must be a string"');
   });
 
   test('validateAndCleanEnumOutput with invalid value', async () => {
@@ -1100,14 +1115,14 @@ describe('Validation', () => {
         type: 'enum',
         values: { a: {}, b: {} },
       }),
-    ).toThrowError('Output must be one of: a, b');
+    ).toThrowErrorMatchingInlineSnapshot('"Output must be one of: a, b"');
 
     expect(() =>
       Validation.validateAndCleanEnumOutput('a', 'c', {
         type: 'enum',
         values: { a: {}, b: {} },
       }),
-    ).toThrowError('Output "a" must be one of: a, b');
+    ).toThrowErrorMatchingInlineSnapshot('"Output "a" must be one of: a, b"');
 
     expect(() =>
       Validation.validateAndCleanEnumOutput(null, undefined, {
@@ -1115,7 +1130,7 @@ describe('Validation', () => {
         values: { a: {}, b: {} },
         required: true,
       }),
-    ).toThrowError(OUTPUT_REQUIRED_ERROR);
+    ).toThrowErrorMatchingInlineSnapshot(OUTPUT_REQUIRED_ERROR);
 
     expect(() =>
       Validation.validateAndCleanEnumOutput('a', undefined, {
@@ -1123,7 +1138,7 @@ describe('Validation', () => {
         values: { a: {}, b: {} },
         required: true,
       }),
-    ).toThrowError('Output "a" is required');
+    ).toThrowErrorMatchingInlineSnapshot('"Output "a" is required"');
 
     const result = Validation.validateAndCleanEnumOutput(null, undefined, {
       type: 'enum',
@@ -1148,9 +1163,9 @@ describe('Validation', () => {
 
     expect(result).toEqual([10, 10, 10]);
 
-    expect(Validation.validateAndCleanObjectOutput).not.toBeCalled();
-    expect(Validation.validateAndCleanEnumOutput).not.toBeCalled();
-    expect(Validation.validateAndCleanPrimitiveOutput).toBeCalledTimes(3);
+    expect(Validation.validateAndCleanObjectOutput).not.toHaveBeenCalled();
+    expect(Validation.validateAndCleanEnumOutput).not.toHaveBeenCalled();
+    expect(Validation.validateAndCleanPrimitiveOutput).toHaveBeenCalledTimes(3);
     expect(Validation.validateAndCleanPrimitiveOutput).toHaveBeenNthCalledWith(1, null, 10, {
       type: 'int',
     });
@@ -1170,7 +1185,7 @@ describe('Validation', () => {
           type: 'int',
         },
       }),
-    ).toThrowError('Output must be an array');
+    ).toThrowErrorMatchingInlineSnapshot('"Output must be an array"');
 
     expect(() =>
       Validation.validateAndCleanArrayOutput('a', 10, {
@@ -1179,7 +1194,7 @@ describe('Validation', () => {
           type: 'int',
         },
       }),
-    ).toThrowError('Output "a" must be an array');
+    ).toThrowErrorMatchingInlineSnapshot('"Output "a" must be an array"');
   });
 
   test('validateAndCleanArrayOutput with array of arrays', async () => {
@@ -1200,16 +1215,16 @@ describe('Validation', () => {
 
     expect(result).toEqual([[10, 10]]);
 
-    expect(Validation.validateAndCleanObjectOutput).not.toBeCalled();
-    expect(Validation.validateAndCleanEnumOutput).not.toBeCalled();
-    expect(Validation.validateAndCleanPrimitiveOutput).toBeCalledTimes(2);
+    expect(Validation.validateAndCleanObjectOutput).not.toHaveBeenCalled();
+    expect(Validation.validateAndCleanEnumOutput).not.toHaveBeenCalled();
+    expect(Validation.validateAndCleanPrimitiveOutput).toHaveBeenCalledTimes(2);
     expect(Validation.validateAndCleanPrimitiveOutput).toHaveBeenNthCalledWith(1, null, 20, {
       type: 'int',
     });
     expect(Validation.validateAndCleanPrimitiveOutput).toHaveBeenNthCalledWith(2, null, 30, {
       type: 'int',
     });
-    expect(Validation.validateAndCleanArrayOutput).toBeCalledTimes(2);
+    expect(Validation.validateAndCleanArrayOutput).toHaveBeenCalledTimes(2);
     expect(Validation.validateAndCleanArrayOutput).toHaveBeenNthCalledWith(2, null, [20, 30], {
       type: 'array',
       item: {
@@ -1237,7 +1252,7 @@ describe('Validation', () => {
 
     expect(result).toEqual([{ test: 4 }]);
 
-    expect(Validation.validateAndCleanObjectOutput).toBeCalledTimes(1);
+    expect(Validation.validateAndCleanObjectOutput).toHaveBeenCalledTimes(1);
     expect(Validation.validateAndCleanObjectOutput).toHaveBeenNthCalledWith(
       1,
       null,
@@ -1250,9 +1265,9 @@ describe('Validation', () => {
         },
       },
     );
-    expect(Validation.validateAndCleanEnumOutput).not.toBeCalled();
-    expect(Validation.validateAndCleanPrimitiveOutput).not.toBeCalled();
-    expect(Validation.validateAndCleanArrayOutput).toBeCalledTimes(1);
+    expect(Validation.validateAndCleanEnumOutput).not.toHaveBeenCalled();
+    expect(Validation.validateAndCleanPrimitiveOutput).not.toHaveBeenCalled();
+    expect(Validation.validateAndCleanArrayOutput).toHaveBeenCalledTimes(1);
     expect(Validation.validateAndCleanArrayOutput).toHaveBeenNthCalledWith(
       1,
       null,
@@ -1286,8 +1301,8 @@ describe('Validation', () => {
 
     expect(result).toEqual(['a', 'a']);
 
-    expect(Validation.validateAndCleanObjectOutput).not.toBeCalled();
-    expect(Validation.validateAndCleanEnumOutput).toBeCalledTimes(2);
+    expect(Validation.validateAndCleanObjectOutput).not.toHaveBeenCalled();
+    expect(Validation.validateAndCleanEnumOutput).toHaveBeenCalledTimes(2);
     expect(Validation.validateAndCleanEnumOutput).toHaveBeenNthCalledWith(1, null, 'a', {
       type: 'enum',
       values: { a: {}, b: {} },
@@ -1296,8 +1311,8 @@ describe('Validation', () => {
       type: 'enum',
       values: { a: {}, b: {} },
     });
-    expect(Validation.validateAndCleanPrimitiveOutput).not.toBeCalled();
-    expect(Validation.validateAndCleanArrayOutput).toBeCalledTimes(1);
+    expect(Validation.validateAndCleanPrimitiveOutput).not.toHaveBeenCalled();
+    expect(Validation.validateAndCleanArrayOutput).toHaveBeenCalledTimes(1);
     expect(Validation.validateAndCleanArrayOutput).toHaveBeenNthCalledWith(1, null, ['a', 'b'], {
       type: 'array',
       item: {
@@ -1330,26 +1345,26 @@ describe('Validation', () => {
 
     expect(result).toEqual({ a: 10, b: 'a', c: ['ok'], d: { t: 10 } });
 
-    expect(Validation.validateAndCleanPrimitiveOutput).toBeCalledTimes(2);
+    expect(Validation.validateAndCleanPrimitiveOutput).toHaveBeenCalledTimes(2);
     expect(Validation.validateAndCleanPrimitiveOutput).toHaveBeenNthCalledWith(1, 'a', 10, {
       type: 'int',
     });
     expect(Validation.validateAndCleanPrimitiveOutput).toHaveBeenNthCalledWith(2, 't', 'v', {
       type: 'string',
     });
-    expect(Validation.validateAndCleanEnumOutput).toBeCalledTimes(1);
+    expect(Validation.validateAndCleanEnumOutput).toHaveBeenCalledTimes(1);
     expect(Validation.validateAndCleanEnumOutput).toHaveBeenNthCalledWith(1, 'b', 'e', {
       type: 'enum',
       values: { e: {}, f: {} },
     });
-    expect(Validation.validateAndCleanArrayOutput).toBeCalledTimes(1);
+    expect(Validation.validateAndCleanArrayOutput).toHaveBeenCalledTimes(1);
     expect(Validation.validateAndCleanArrayOutput).toHaveBeenNthCalledWith(1, 'c', [20, 30], {
       type: 'array',
       item: {
         type: 'int',
       },
     });
-    expect(Validation.validateAndCleanObjectOutput).toBeCalledTimes(2);
+    expect(Validation.validateAndCleanObjectOutput).toHaveBeenCalledTimes(2);
     expect(Validation.validateAndCleanObjectOutput).toHaveBeenNthCalledWith(
       2,
       'd',
@@ -1373,19 +1388,19 @@ describe('Validation', () => {
         type: 'object',
         properties: {},
       }),
-    ).toThrowError(OUTPUT_REQUIRED_ERROR);
+    ).toThrowErrorMatchingInlineSnapshot(OUTPUT_REQUIRED_ERROR);
 
     expect(() =>
       Validation.validateAndCleanObjectOutput('testName', null, {
         type: 'object',
         properties: {},
       }),
-    ).toThrowError('Output "testName" is required');
+    ).toThrowErrorMatchingInlineSnapshot('"Output "testName" is required"');
 
-    expect(Validation.validateAndCleanPrimitiveOutput).not.toBeCalled();
-    expect(Validation.validateAndCleanEnumOutput).not.toBeCalled();
-    expect(Validation.validateAndCleanArrayOutput).not.toBeCalled();
-    expect(Validation.validateAndCleanObjectOutput).toBeCalledTimes(2);
+    expect(Validation.validateAndCleanPrimitiveOutput).not.toHaveBeenCalled();
+    expect(Validation.validateAndCleanEnumOutput).not.toHaveBeenCalled();
+    expect(Validation.validateAndCleanArrayOutput).not.toHaveBeenCalled();
+    expect(Validation.validateAndCleanObjectOutput).toHaveBeenCalledTimes(2);
   });
 
   test('validateAndCleanObjectOutput with empty value', async () => {
@@ -1403,10 +1418,10 @@ describe('Validation', () => {
 
     expect(result).toBeUndefined();
 
-    expect(Validation.validateAndCleanPrimitiveOutput).not.toBeCalled();
-    expect(Validation.validateAndCleanEnumOutput).not.toBeCalled();
-    expect(Validation.validateAndCleanArrayOutput).not.toBeCalled();
-    expect(Validation.validateAndCleanObjectOutput).toBeCalledTimes(1);
+    expect(Validation.validateAndCleanPrimitiveOutput).not.toHaveBeenCalled();
+    expect(Validation.validateAndCleanEnumOutput).not.toHaveBeenCalled();
+    expect(Validation.validateAndCleanArrayOutput).not.toHaveBeenCalled();
+    expect(Validation.validateAndCleanObjectOutput).toHaveBeenCalledTimes(1);
   });
 
   test('validateAndCleanObjectOutput with non-object', async () => {
@@ -1421,19 +1436,19 @@ describe('Validation', () => {
         type: 'object',
         properties: {},
       }),
-    ).toThrowError('Output must be an object');
+    ).toThrowErrorMatchingInlineSnapshot('"Output must be an object"');
 
     expect(() =>
       Validation.validateAndCleanObjectOutput('testName', 20, {
         type: 'object',
         properties: {},
       }),
-    ).toThrowError('Output "testName" must be an object');
+    ).toThrowErrorMatchingInlineSnapshot('"Output "testName" must be an object"');
 
-    expect(Validation.validateAndCleanPrimitiveOutput).not.toBeCalled();
-    expect(Validation.validateAndCleanEnumOutput).not.toBeCalled();
-    expect(Validation.validateAndCleanArrayOutput).not.toBeCalled();
-    expect(Validation.validateAndCleanObjectOutput).toBeCalledTimes(2);
+    expect(Validation.validateAndCleanPrimitiveOutput).not.toHaveBeenCalled();
+    expect(Validation.validateAndCleanEnumOutput).not.toHaveBeenCalled();
+    expect(Validation.validateAndCleanArrayOutput).not.toHaveBeenCalled();
+    expect(Validation.validateAndCleanObjectOutput).toHaveBeenCalledTimes(2);
   });
 
   test('validateAndCleanOutput with object', async () => {
@@ -1454,10 +1469,10 @@ describe('Validation', () => {
 
     expect(result).toEqual({ a: 10 });
 
-    expect(Validation.validateAndCleanPrimitiveOutput).not.toBeCalled();
-    expect(Validation.validateAndCleanEnumOutput).not.toBeCalled();
-    expect(Validation.validateAndCleanArrayOutput).not.toBeCalled();
-    expect(Validation.validateAndCleanObjectOutput).toBeCalledTimes(1);
+    expect(Validation.validateAndCleanPrimitiveOutput).not.toHaveBeenCalled();
+    expect(Validation.validateAndCleanEnumOutput).not.toHaveBeenCalled();
+    expect(Validation.validateAndCleanArrayOutput).not.toHaveBeenCalled();
+    expect(Validation.validateAndCleanObjectOutput).toHaveBeenCalledTimes(1);
     expect(Validation.validateAndCleanObjectOutput).toHaveBeenNthCalledWith(
       1,
       null,
@@ -1491,16 +1506,16 @@ describe('Validation', () => {
 
     expect(result).toEqual(['ok']);
 
-    expect(Validation.validateAndCleanPrimitiveOutput).not.toBeCalled();
-    expect(Validation.validateAndCleanEnumOutput).not.toBeCalled();
-    expect(Validation.validateAndCleanArrayOutput).toBeCalledTimes(1);
+    expect(Validation.validateAndCleanPrimitiveOutput).not.toHaveBeenCalled();
+    expect(Validation.validateAndCleanEnumOutput).not.toHaveBeenCalled();
+    expect(Validation.validateAndCleanArrayOutput).toHaveBeenCalledTimes(1);
     expect(Validation.validateAndCleanArrayOutput).toHaveBeenNthCalledWith(1, null, [20, 30], {
       type: 'array',
       item: {
         type: 'int',
       },
     });
-    expect(Validation.validateAndCleanObjectOutput).not.toBeCalled();
+    expect(Validation.validateAndCleanObjectOutput).not.toHaveBeenCalled();
   });
 
   test('validateAndCleanOutput with enum', async () => {
@@ -1519,14 +1534,14 @@ describe('Validation', () => {
 
     expect(result).toEqual('e');
 
-    expect(Validation.validateAndCleanPrimitiveOutput).not.toBeCalled();
-    expect(Validation.validateAndCleanEnumOutput).toBeCalledTimes(1);
+    expect(Validation.validateAndCleanPrimitiveOutput).not.toHaveBeenCalled();
+    expect(Validation.validateAndCleanEnumOutput).toHaveBeenCalledTimes(1);
     expect(Validation.validateAndCleanEnumOutput).toHaveBeenNthCalledWith(1, null, 'b', {
       type: 'enum',
       values: { a: {}, b: {} },
     });
-    expect(Validation.validateAndCleanArrayOutput).not.toBeCalled();
-    expect(Validation.validateAndCleanObjectOutput).not.toBeCalled();
+    expect(Validation.validateAndCleanArrayOutput).not.toHaveBeenCalled();
+    expect(Validation.validateAndCleanObjectOutput).not.toHaveBeenCalled();
   });
 
   test('validateAndCleanOutput with primitive', async () => {
@@ -1544,13 +1559,13 @@ describe('Validation', () => {
 
     expect(result).toEqual(10);
 
-    expect(Validation.validateAndCleanPrimitiveOutput).toBeCalledTimes(1);
+    expect(Validation.validateAndCleanPrimitiveOutput).toHaveBeenCalledTimes(1);
     expect(Validation.validateAndCleanPrimitiveOutput).toHaveBeenNthCalledWith(1, null, 20, {
       type: 'int',
     });
-    expect(Validation.validateAndCleanEnumOutput).not.toBeCalled();
-    expect(Validation.validateAndCleanArrayOutput).not.toBeCalled();
-    expect(Validation.validateAndCleanObjectOutput).not.toBeCalled();
+    expect(Validation.validateAndCleanEnumOutput).not.toHaveBeenCalled();
+    expect(Validation.validateAndCleanArrayOutput).not.toHaveBeenCalled();
+    expect(Validation.validateAndCleanObjectOutput).not.toHaveBeenCalled();
   });
 
   test('validateAndCleanOutput with missing value', async () => {
@@ -1568,14 +1583,14 @@ describe('Validation', () => {
         },
         undefined,
       ),
-    ).toThrowError('testError');
+    ).toThrowErrorMatchingInlineSnapshot('"testError"');
 
-    expect(Validation.validateAndCleanPrimitiveOutput).toBeCalledTimes(1);
+    expect(Validation.validateAndCleanPrimitiveOutput).toHaveBeenCalledTimes(1);
     expect(Validation.validateAndCleanPrimitiveOutput).toHaveBeenNthCalledWith(1, null, undefined, {
       type: 'int',
     });
-    expect(Validation.validateAndCleanEnumOutput).not.toBeCalled();
-    expect(Validation.validateAndCleanArrayOutput).not.toBeCalled();
-    expect(Validation.validateAndCleanObjectOutput).not.toBeCalled();
+    expect(Validation.validateAndCleanEnumOutput).not.toHaveBeenCalled();
+    expect(Validation.validateAndCleanArrayOutput).not.toHaveBeenCalled();
+    expect(Validation.validateAndCleanObjectOutput).not.toHaveBeenCalled();
   });
 });

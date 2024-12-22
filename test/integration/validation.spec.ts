@@ -4,7 +4,7 @@ import type {
   PrimitiveTypeName,
 } from '@tws-js/common';
 
-import { Validation } from '../../src/validation';
+import { SafeError, Validation } from '../../src/validation';
 
 const OUTPUT_IS_REQUIRED = 'Output is required';
 const OUTPUT_MUST_BE_A_STRING = 'Output must be a string';
@@ -14,10 +14,9 @@ describe('Validation', () => {
     jest.restoreAllMocks();
   });
 
-  test('constructor', async () => {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    new Validation();
+  test('method toJSON from SafeError', async () => {
+    const error = new SafeError('test');
+    expect(error.toJSON()).toEqual('test');
   });
 
   test('validate primitive input with missing value', async () => {
@@ -27,7 +26,7 @@ describe('Validation', () => {
       required: true,
     };
 
-    expect(() => Validation.validatePrimitiveInput('a', undefined, typeDefinition)).toThrowError(
+    expect(() => Validation.validatePrimitiveInput('a', undefined, typeDefinition)).toThrow(
       '"a" is required',
     );
   });
@@ -39,7 +38,7 @@ describe('Validation', () => {
       required: true,
     };
 
-    expect(() => Validation.validatePrimitiveInput('b', 1, typeDefinition)).toThrowError(
+    expect(() => Validation.validatePrimitiveInput('b', 1, typeDefinition)).toThrow(
       '"b" must be a string',
     );
   });
@@ -51,7 +50,7 @@ describe('Validation', () => {
       required: true,
     };
 
-    expect(() => Validation.validatePrimitiveInput('b', 1.3, typeDefinition)).toThrowError(
+    expect(() => Validation.validatePrimitiveInput('b', 1.3, typeDefinition)).toThrow(
       '"b" must be a valid integer',
     );
   });
@@ -63,7 +62,7 @@ describe('Validation', () => {
       required: true,
     };
 
-    expect(() => Validation.validatePrimitiveInput('b', '1.7', typeDefinition)).toThrowError(
+    expect(() => Validation.validatePrimitiveInput('b', '1.7', typeDefinition)).toThrow(
       '"b" must be a valid float',
     );
   });
@@ -75,7 +74,7 @@ describe('Validation', () => {
       required: true,
     };
 
-    expect(() => Validation.validatePrimitiveInput('b', 1, typeDefinition)).toThrowError(
+    expect(() => Validation.validatePrimitiveInput('b', 1, typeDefinition)).toThrow(
       '"b" must be a boolean',
     );
   });
@@ -87,7 +86,7 @@ describe('Validation', () => {
       required: true,
     };
 
-    expect(() => Validation.validatePrimitiveInput('c', 1, typeDefinition)).toThrowError(
+    expect(() => Validation.validatePrimitiveInput('c', 1, typeDefinition)).toThrow(
       `Unknown primitive type "abcd" for "c"`,
     );
   });
@@ -100,7 +99,7 @@ describe('Validation', () => {
       properties: {},
     };
 
-    expect(() => Validation.validateObjectInput('d', undefined, typeDefinition)).toThrowError(
+    expect(() => Validation.validateObjectInput('d', undefined, typeDefinition)).toThrow(
       '"d" is required',
     );
   });
@@ -121,7 +120,7 @@ describe('Validation', () => {
         1,
         typeDefinition,
       ),
-    ).toThrowError('"e" must be an object');
+    ).toThrow('"e" must be an object');
   });
 
   test('validate enum input with missing value', async () => {
@@ -134,9 +133,7 @@ describe('Validation', () => {
       },
     };
 
-    expect(() => Validation.validateRootObjectInput({}, typeDefinition)).toThrowError(
-      '"a" is required',
-    );
+    expect(() => Validation.validateRootObjectInput({}, typeDefinition)).toThrow('"a" is required');
   });
 
   test('validate enum input with invalid default value', async () => {
@@ -149,7 +146,7 @@ describe('Validation', () => {
       },
     };
 
-    expect(() => Validation.validateRootObjectInput({}, typeDefinition)).toThrowError(
+    expect(() => Validation.validateRootObjectInput({}, typeDefinition)).toThrow(
       'Default value for "a" must be one of: a, b',
     );
   });
@@ -175,7 +172,7 @@ describe('Validation', () => {
       },
     };
 
-    expect(() => Validation.validateRootObjectInput({ a: 'c' }, typeDefinition)).toThrowError(
+    expect(() => Validation.validateRootObjectInput({ a: 'c' }, typeDefinition)).toThrow(
       '"a" must be one of: a, b',
     );
   });
@@ -188,7 +185,7 @@ describe('Validation', () => {
       },
     };
 
-    expect(() => Validation.validateRootObjectInput({ a: 1 }, typeDefinition)).toThrowError(
+    expect(() => Validation.validateRootObjectInput({ a: 1 }, typeDefinition)).toThrow(
       '"a" must be a string',
     );
   });
@@ -205,7 +202,7 @@ describe('Validation', () => {
         type: 'array',
         item: typeDefinition,
       }),
-    ).toThrowError('"f" is required');
+    ).toThrow('"f" is required');
 
     expect(() =>
       Validation.validateArrayInput(
@@ -215,7 +212,7 @@ describe('Validation', () => {
         1,
         { type: 'array', item: typeDefinition },
       ),
-    ).toThrowError('"g" must be an array');
+    ).toThrow('"g" must be an array');
   });
 
   test('validate root object input with missing or non-object input', async () => {
@@ -234,7 +231,7 @@ describe('Validation', () => {
         undefined,
         typeDefinition,
       ),
-    ).toThrowError('Input is required');
+    ).toThrow('Input is required');
 
     expect(() =>
       Validation.validateRootObjectInput(
@@ -243,7 +240,7 @@ describe('Validation', () => {
         1,
         typeDefinition,
       ),
-    ).toThrowError('Input must be an object');
+    ).toThrow('Input must be an object');
   });
 
   test('validate root object input with array of arrays', async () => {
@@ -315,9 +312,9 @@ describe('Validation', () => {
   });
 
   test('validate output with missing required primitive type', async () => {
-    expect(() =>
-      Validation.validateAndCleanOutput({ type: 'string' as const }, undefined),
-    ).toThrowError(OUTPUT_IS_REQUIRED);
+    expect(() => Validation.validateAndCleanOutput({ type: 'string' as const }, undefined)).toThrow(
+      OUTPUT_IS_REQUIRED,
+    );
 
     expect(() =>
       Validation.validateAndCleanOutput(
@@ -329,11 +326,11 @@ describe('Validation', () => {
         },
         { a: undefined },
       ),
-    ).toThrowError('Output "a" is required');
+    ).toThrow('Output "a" is required');
   });
 
   test('validate output with invalid strinssssg', async () => {
-    expect(() => Validation.validateAndCleanOutput({ type: 'string' as const }, 1)).toThrowError(
+    expect(() => Validation.validateAndCleanOutput({ type: 'string' as const }, 1)).toThrow(
       OUTPUT_MUST_BE_A_STRING,
     );
 
@@ -347,11 +344,11 @@ describe('Validation', () => {
         },
         { test: 1 },
       ),
-    ).toThrowError('Output "test" must be a string');
+    ).toThrow('Output "test" must be a string');
   });
 
   test('validate output with invalid integer', async () => {
-    expect(() => Validation.validateAndCleanOutput({ type: 'int' as const }, 'a')).toThrowError(
+    expect(() => Validation.validateAndCleanOutput({ type: 'int' as const }, 'a')).toThrow(
       'Output must be an integer',
     );
 
@@ -365,11 +362,11 @@ describe('Validation', () => {
         },
         { a: 'a' },
       ),
-    ).toThrowError('Output "a" must be an integer');
+    ).toThrow('Output "a" must be an integer');
   });
 
   test('validate output with invalid float', async () => {
-    expect(() => Validation.validateAndCleanOutput({ type: 'float' as const }, 'a')).toThrowError(
+    expect(() => Validation.validateAndCleanOutput({ type: 'float' as const }, 'a')).toThrow(
       'Output must be a float',
     );
 
@@ -383,11 +380,11 @@ describe('Validation', () => {
         },
         { a: 'a' },
       ),
-    ).toThrowError('Output "a" must be a float');
+    ).toThrow('Output "a" must be a float');
   });
 
   test('validate output with invalid boolean', async () => {
-    expect(() => Validation.validateAndCleanOutput({ type: 'boolean' as const }, 'a')).toThrowError(
+    expect(() => Validation.validateAndCleanOutput({ type: 'boolean' as const }, 'a')).toThrow(
       'Output must be a boolean',
     );
 
@@ -401,7 +398,7 @@ describe('Validation', () => {
         },
         { a: 'a' },
       ),
-    ).toThrowError('Output "a" must be a boolean');
+    ).toThrow('Output "a" must be a boolean');
   });
 
   test('validate output with missing enum', async () => {
@@ -413,7 +410,7 @@ describe('Validation', () => {
         },
         undefined,
       ),
-    ).toThrowError(OUTPUT_IS_REQUIRED);
+    ).toThrow(OUTPUT_IS_REQUIRED);
 
     expect(() =>
       Validation.validateAndCleanOutput(
@@ -425,7 +422,7 @@ describe('Validation', () => {
         },
         { a: undefined },
       ),
-    ).toThrowError('Output "a" is required');
+    ).toThrow('Output "a" is required');
 
     expect(
       Validation.validateAndCleanOutput(
@@ -448,7 +445,7 @@ describe('Validation', () => {
         },
         5,
       ),
-    ).toThrowError(OUTPUT_MUST_BE_A_STRING);
+    ).toThrow(OUTPUT_MUST_BE_A_STRING);
 
     expect(() =>
       Validation.validateAndCleanOutput(
@@ -460,7 +457,7 @@ describe('Validation', () => {
         },
         { a: 5 },
       ),
-    ).toThrowError('Output "a" must be a string');
+    ).toThrow('Output "a" must be a string');
   });
 
   test('validate output with invalid enum', async () => {
@@ -472,7 +469,7 @@ describe('Validation', () => {
         },
         'c',
       ),
-    ).toThrowError('Output must be one of: a, b');
+    ).toThrow('Output must be one of: a, b');
 
     expect(() =>
       Validation.validateAndCleanOutput(
@@ -484,7 +481,7 @@ describe('Validation', () => {
         },
         { a: 'c' },
       ),
-    ).toThrowError('Output "a" must be one of: a, b');
+    ).toThrow('Output "a" must be one of: a, b');
   });
 
   test('validate output with invalid array', async () => {
@@ -496,7 +493,7 @@ describe('Validation', () => {
         },
         5,
       ),
-    ).toThrowError('Output must be an array');
+    ).toThrow('Output must be an array');
 
     expect(() =>
       Validation.validateAndCleanOutput(
@@ -511,7 +508,7 @@ describe('Validation', () => {
         },
         { a: 5 },
       ),
-    ).toThrowError('Output "a" must be an array');
+    ).toThrow('Output "a" must be an array');
   });
 
   test('validate output with array of valid arrays', async () => {
@@ -555,7 +552,7 @@ describe('Validation', () => {
         },
         undefined,
       ),
-    ).toThrowError(OUTPUT_IS_REQUIRED);
+    ).toThrow(OUTPUT_IS_REQUIRED);
 
     expect(() =>
       Validation.validateAndCleanOutput(
@@ -574,7 +571,7 @@ describe('Validation', () => {
           obj: undefined,
         },
       ),
-    ).toThrowError('Output "obj" is required');
+    ).toThrow('Output "obj" is required');
 
     expect(
       Validation.validateAndCleanOutput(
@@ -601,7 +598,7 @@ describe('Validation', () => {
         },
         5,
       ),
-    ).toThrowError('Output must be an object');
+    ).toThrow('Output must be an object');
 
     expect(() =>
       Validation.validateAndCleanOutput(
@@ -620,6 +617,6 @@ describe('Validation', () => {
           obj: 5,
         },
       ),
-    ).toThrowError('Output "obj" must be an object');
+    ).toThrow('Output "obj" must be an object');
   });
 });

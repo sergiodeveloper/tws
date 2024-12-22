@@ -8,19 +8,29 @@ import type {
   PrimitiveOutputTypeDefinition,
 } from '@tws-js/common';
 
-export class ValidationError extends Error {
+/**
+ * Error that can be safely sent to the client.
+ */
+export class SafeError extends Error {
   constructor(message: string) {
-    super(message);
+    // Use only first line with a maximum length of 150 characters
+    const cutMessage = message.split('\n')[0].substring(0, 150).trim();
+
+    super(cutMessage);
+  }
+
+  toString(): string {
+    return this.message;
+  }
+
+  toJSON(): string {
+    return this.message;
   }
 }
 
 const REQUIRED_OUTPUT_ERROR = 'Output is required';
 
-export class Validation {
-  private constructor() {
-    // no-op
-  }
-
+export abstract class Validation {
   static unknownIsObject(input: unknown): input is Record<string, unknown> {
     return (
       !!input &&
@@ -32,7 +42,7 @@ export class Validation {
 
   static validateString(name: string, input: unknown): string {
     if (typeof input !== 'string') {
-      throw new ValidationError(`"${name}" must be a string`);
+      throw new SafeError(`"${name}" must be a string`);
     }
 
     return input;
@@ -44,7 +54,7 @@ export class Validation {
       !Number.isInteger(input) ||
       /^-?[0-9]+$/.test(`${input}`) === false
     ) {
-      throw new ValidationError(`"${name}" must be a valid integer`);
+      throw new SafeError(`"${name}" must be a valid integer`);
     }
 
     return input;
@@ -56,7 +66,7 @@ export class Validation {
       Number.isNaN(input) ||
       /^-?[0-9]+(\.[0-9]+)?$/.test(`${input}`) === false
     ) {
-      throw new ValidationError(`"${name}" must be a valid float`);
+      throw new SafeError(`"${name}" must be a valid float`);
     }
 
     return input;
@@ -64,7 +74,7 @@ export class Validation {
 
   static validateBoolean(name: string, input: unknown): boolean {
     if (typeof input !== 'boolean') {
-      throw new ValidationError(`"${name}" must be a boolean`);
+      throw new SafeError(`"${name}" must be a boolean`);
     }
 
     return input;
@@ -77,12 +87,13 @@ export class Validation {
   ): string | number | boolean | undefined {
     if (input === undefined || input === null) {
       if (inputDefinition.defaultValue !== undefined) {
-        // Allow to set default value even if the type is different. The resolver will be typed correctly
+        // Allow to set default value even if the type is different. The resolver will be
+        // typed correctly
         return inputDefinition.defaultValue;
       }
 
       if (inputDefinition.required !== false) {
-        throw new ValidationError(`"${name}" is required`);
+        throw new SafeError(`"${name}" is required`);
       }
       return undefined;
     }
@@ -97,7 +108,7 @@ export class Validation {
       case 'boolean':
         return Validation.validateBoolean(name, input);
       default:
-        throw new ValidationError(`Unknown primitive type "${inputDefinition.type}" for "${name}"`);
+        throw new SafeError(`Unknown primitive type "${inputDefinition.type}" for "${name}"`);
     }
   }
 
@@ -111,13 +122,13 @@ export class Validation {
   ): void {
     if (input === undefined || input === null) {
       if (inputDefinition.required !== false) {
-        throw new ValidationError(`"${name}" is required`);
+        throw new SafeError(`"${name}" is required`);
       }
       return;
     }
 
     if (!Validation.unknownIsObject(input)) {
-      throw new ValidationError(`"${name}" must be an object`);
+      throw new SafeError(`"${name}" must be an object`);
     }
 
     Object.keys(inputDefinition.properties).forEach((fieldName) => {
@@ -151,7 +162,7 @@ export class Validation {
         inputDefinition.defaultValue !== undefined &&
         !Object.keys(inputDefinition.values).includes(inputDefinition.defaultValue)
       ) {
-        throw new ValidationError(
+        throw new SafeError(
           `Default value for "${name}" must be one of: ${Object.keys(inputDefinition.values).join(
             ', ',
           )}`,
@@ -159,19 +170,19 @@ export class Validation {
       }
 
       if (inputDefinition.required !== false) {
-        throw new ValidationError(`"${name}" is required`);
+        throw new SafeError(`"${name}" is required`);
       }
 
       return inputDefinition.defaultValue;
     }
 
     if (typeof input !== 'string') {
-      throw new ValidationError(`"${name}" must be a string`);
+      throw new SafeError(`"${name}" must be a string`);
     }
 
     // if (!inputDefinition.values.includes(input)) {
     if (!Object.keys(inputDefinition.values).includes(input)) {
-      throw new ValidationError(
+      throw new SafeError(
         `"${name}" must be one of: ${Object.keys(inputDefinition.values).join(', ')}`,
       );
     }
@@ -188,10 +199,10 @@ export class Validation {
     inputDefinition: ArrayTypeDefinition,
   ): void {
     if (!input) {
-      throw new ValidationError(`"${name}" is required`);
+      throw new SafeError(`"${name}" is required`);
     }
     if (!Array.isArray(input)) {
-      throw new ValidationError(`"${name}" must be an array`);
+      throw new SafeError(`"${name}" must be an array`);
     }
 
     const arrayItemType = inputDefinition.item;
@@ -216,18 +227,23 @@ export class Validation {
     }
   }
 
+  /**
+   * Mutates and validates the input object based on the input type definition.
+   *
+   * @throws {SafeError} if the input format is invalid.
+   */
   static validateRootObjectInput(
     input: unknown,
     inputDefinition: InputTypeDefinition,
   ): Record<string, unknown> {
     if (!input) {
-      throw new ValidationError('Input is required');
+      throw new SafeError('Input is required');
     }
 
     const inputCopy = JSON.parse(JSON.stringify(input)) as unknown;
 
     if (!Validation.unknownIsObject(inputCopy)) {
-      throw new ValidationError('Input must be an object');
+      throw new SafeError('Input must be an object');
     }
 
     Object.keys(inputDefinition).forEach((fieldName) => {
@@ -267,9 +283,9 @@ export class Validation {
     if (value === undefined || value === null) {
       if (type.required !== false) {
         if (name) {
-          throw new ValidationError(`Output "${name}" is required`);
+          throw new SafeError(`Output "${name}" is required`);
         }
-        throw new ValidationError(REQUIRED_OUTPUT_ERROR);
+        throw new SafeError(REQUIRED_OUTPUT_ERROR);
       }
 
       return undefined;
@@ -280,9 +296,9 @@ export class Validation {
         return Validation.validateString(name || '', value);
       } catch (error) {
         if (name) {
-          throw new ValidationError(`Output "${name}" must be a string`);
+          throw new SafeError(`Output "${name}" must be a string`);
         }
-        throw new ValidationError('Output must be a string');
+        throw new SafeError('Output must be a string');
       }
     }
 
@@ -291,9 +307,9 @@ export class Validation {
         return Validation.validateInt(name || '', value);
       } catch (error) {
         if (name) {
-          throw new ValidationError(`Output "${name}" must be an integer`);
+          throw new SafeError(`Output "${name}" must be an integer`);
         }
-        throw new ValidationError('Output must be an integer, got: ' + JSON.stringify(value));
+        throw new SafeError('Output must be an integer, got: ' + JSON.stringify(value));
       }
     }
 
@@ -302,9 +318,9 @@ export class Validation {
         return Validation.validateFloat(name || '', value);
       } catch (error) {
         if (name) {
-          throw new ValidationError(`Output "${name}" must be a float`);
+          throw new SafeError(`Output "${name}" must be a float`);
         }
-        throw new ValidationError('Output must be a float');
+        throw new SafeError('Output must be a float');
       }
     }
 
@@ -313,9 +329,9 @@ export class Validation {
         return Validation.validateBoolean(name || '', value);
       } catch (error) {
         if (name) {
-          throw new ValidationError(`Output "${name}" must be a boolean`);
+          throw new SafeError(`Output "${name}" must be a boolean`);
         }
-        throw new ValidationError('Output must be a boolean');
+        throw new SafeError('Output must be a boolean');
       }
     }
   }
@@ -329,9 +345,9 @@ export class Validation {
     if (value === undefined || value === null) {
       if (type.required !== false) {
         if (name) {
-          throw new ValidationError(`Output "${name}" is required`);
+          throw new SafeError(`Output "${name}" is required`);
         }
-        throw new ValidationError(REQUIRED_OUTPUT_ERROR);
+        throw new SafeError(REQUIRED_OUTPUT_ERROR);
       }
 
       return undefined;
@@ -339,18 +355,18 @@ export class Validation {
 
     if (typeof value !== 'string') {
       if (name) {
-        throw new ValidationError(`Output "${name}" must be a string`);
+        throw new SafeError(`Output "${name}" must be a string`);
       }
-      throw new ValidationError('Output must be a string');
+      throw new SafeError('Output must be a string');
     }
 
     if (!Object.keys(type.values).includes(value)) {
       if (name) {
-        throw new ValidationError(
+        throw new SafeError(
           `Output "${name}" must be one of: ${Object.keys(type.values).join(', ')}`,
         );
       }
-      throw new ValidationError(`Output must be one of: ${Object.keys(type.values).join(', ')}`);
+      throw new SafeError(`Output must be one of: ${Object.keys(type.values).join(', ')}`);
     }
 
     return value;
@@ -363,9 +379,9 @@ export class Validation {
   ): unknown[] {
     if (!Array.isArray(value)) {
       if (name) {
-        throw new ValidationError(`Output "${name}" must be an array`);
+        throw new SafeError(`Output "${name}" must be an array`);
       }
-      throw new ValidationError('Output must be an array');
+      throw new SafeError('Output must be an array');
     }
 
     return (value as unknown[]).map((item) => {
@@ -389,9 +405,9 @@ export class Validation {
     if (value === undefined || value === null) {
       if (type.required !== false) {
         if (name) {
-          throw new ValidationError(`Output "${name}" is required`);
+          throw new SafeError(`Output "${name}" is required`);
         }
-        throw new ValidationError(REQUIRED_OUTPUT_ERROR);
+        throw new SafeError(REQUIRED_OUTPUT_ERROR);
       }
 
       return undefined;
@@ -399,9 +415,9 @@ export class Validation {
 
     if (!Validation.unknownIsObject(value)) {
       if (name) {
-        throw new ValidationError(`Output "${name}" must be an object`);
+        throw new SafeError(`Output "${name}" must be an object`);
       }
-      throw new ValidationError('Output must be an object');
+      throw new SafeError('Output must be an object');
     }
 
     const cleanOutput = {} as Record<string, unknown>;
@@ -440,6 +456,11 @@ export class Validation {
     return cleanOutput;
   }
 
+  /**
+   * Clones and validates the output against the given output type.
+   *
+   * @throws {SafeError} if the output format is invalid.
+   */
   static validateAndCleanOutput(outputType: OutputTypeDefinition, output: unknown): unknown {
     const outputCopy =
       output === undefined || output === null

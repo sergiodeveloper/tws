@@ -1,4 +1,4 @@
-import { Schema, Operation } from '../../src/index';
+import { Schema, Operation, RemoteControl } from '../../src/index';
 
 describe('Schema', () => {
   afterEach(() => {
@@ -503,8 +503,50 @@ describe('Schema', () => {
       }),
     });
 
-    expect(() => schema.execute('corruptedOperation', {}, {})).rejects.toThrowError(
+    await expect(schema.execute('corruptedOperation', {}, {})).rejects.toThrow(
       'Operation "corruptedOperation" does not have a handler',
     );
+  });
+
+  test('send an event with remote control', async () => {
+    const eventSender = jest.fn();
+
+    const remoteControl = new RemoteControl({
+      events: {
+        orderCreated: {
+          input: {
+            orderId: { type: 'string' },
+            product: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                amount: { type: 'float' },
+              },
+            },
+          },
+        },
+      },
+      eventSender,
+    });
+
+    await remoteControl.sendEvent('orderCreated', {
+      clientIds: ['client1', 'client2'],
+      data: {
+        orderId: '1234',
+        product: {
+          id: '123',
+          amount: 2,
+        },
+      },
+    });
+
+    expect(eventSender).toHaveBeenCalledWith({
+      event: 'orderCreated',
+      clientIds: ['client1', 'client2'],
+      payload: JSON.stringify({
+        event: 'orderCreated',
+        data: { orderId: '1234', product: { id: '123', amount: 2 } },
+      }),
+    });
   });
 });
