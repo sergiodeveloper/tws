@@ -1,46 +1,6 @@
-import type { InputTypeDefinition, InvocationInputType } from '@tws-js/common';
-
-import type { EventMap, Logger, OperationMap, Schema } from './schema';
-import { SafeError } from './validation';
+import type { EventMap, OperationMap, Schema } from './schema';
 
 export abstract class Server {
-  static parseRequestBody(
-    body: string,
-    logger: Logger,
-  ): {
-    operation: string;
-    input: InvocationInputType<InputTypeDefinition>;
-  } {
-    if (!body.length) {
-      logger.error?.('No request body provided');
-      throw new SafeError('No request body provided');
-    }
-
-    let parsedBody: { operation?: string; input?: InvocationInputType<InputTypeDefinition> };
-
-    try {
-      parsedBody = JSON.parse(body);
-    } catch (e) {
-      logger.error?.(`Failed to parse request body: ${e}`);
-      throw new SafeError('Failed to parse request body, check if it is valid JSON');
-    }
-
-    if (!parsedBody.operation) {
-      logger.error?.('No operation provided in request body');
-      throw new SafeError('No operation provided');
-    }
-
-    if (!parsedBody.input) {
-      logger.error?.('No input provided in request body');
-      throw new SafeError('No input provided');
-    }
-
-    return {
-      operation: parsedBody.operation,
-      input: parsedBody.input,
-    };
-  }
-
   static processPlaygroundRequest(options: { schemaPath: string; serverPath: string }): string {
     return `<!doctype html>
 <html lang="en">
@@ -78,7 +38,12 @@ export abstract class Server {
   static processSchemaRequest<Operations extends OperationMap, Events extends EventMap>(options: {
     schema: Schema<Operations, Events>;
   }): string {
-    const schema: Schema<Operations, Events> = JSON.parse(JSON.stringify(options.schema));
+    const schema: Schema<Operations, Events> = JSON.parse(
+      JSON.stringify({
+        operations: options.schema.operations,
+        events: options.schema.remoteControl?.events || {},
+      }),
+    );
 
     Object.keys(schema.operations).forEach((operation) => {
       delete schema.operations[operation].handler;

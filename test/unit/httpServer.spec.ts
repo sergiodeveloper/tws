@@ -121,7 +121,50 @@ describe('Server', () => {
     });
   });
 
-  test('createExpressServerListener handler with error', async () => {
+  test('createExpressServerListener handler with body too large', async () => {
+    const schema = {
+      execute: jest.fn().mockResolvedValue({
+        value: 'result',
+      }),
+    };
+
+    const logger = { error: jest.fn() };
+
+    jest.spyOn(HTTPServer, 'getRequestBody').mockRejectedValue(new Error('testError'));
+
+    const listener = HTTPServer.createExpressServerListener({
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      schema,
+      maxRequestBodyBytes: 1,
+      logger,
+      allowedOrigin: '*',
+    });
+
+    const req = {
+      on: jest.fn().mockImplementation((event, cb) => {
+        cb('body');
+      }),
+      headers: {
+        myHeader: 'test',
+      },
+    };
+
+    const res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn().mockReturnThis(),
+      setHeader: jest.fn().mockReturnThis(),
+    };
+
+    await listener(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({
+      errors: ['Failed to read request body', 'Error: testError'],
+    });
+  });
+
+  test('createExpressServerListener handler with execution error', async () => {
     const schema = {
       execute: jest.fn().mockResolvedValue({
         value: 'result',

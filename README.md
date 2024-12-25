@@ -9,7 +9,7 @@
   <b>TWS is a framework built with TypeScript to create type-safe web servers.</b>
 </p>
 
-✅ 100% code coverage
+This framework was created with the purpose of enhancing the developer and user experience when developing and communicating with strongly typed APIs.
 
 ## Usage
 
@@ -24,7 +24,7 @@ npm install @tws-js/server
 Start the server:
 
 ```typescript
-import { Operation, Schema, createServer } from '@tws-js/server';
+import { Operation, Schema, HTTPServer } from '@tws-js/server';
 
 const schema = new Schema({
   hello: new Operation({
@@ -52,15 +52,16 @@ const schema = new Schema({
       };
     },
   }),
-});
-
-const server = createServer({
-  schema,
-  path: '/tws',
+}, {
   logger: {
     error: (message) => console.error(message),
   },
   enablePlayground: true,
+});
+
+const server = HTTPServer.create({
+  schema,
+  path: '/tws',
 });
 
 server.listen(3000);

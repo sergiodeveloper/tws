@@ -15,7 +15,7 @@ export type OperationMetadata = {
 export interface ClientMessage {
   operation: string;
   headers: Record<string, string>;
-  input: object;
+  input: unknown;
 }
 
 /**
@@ -172,10 +172,6 @@ export class Schema<Operations extends OperationMap, Events extends EventMap> {
 
     if (!message.operation || typeof message.operation !== 'string') {
       throw new SafeError('No operation provided in client message');
-    }
-
-    if (!message.input || typeof message.input !== 'object') {
-      throw new SafeError('No input provided in client message');
     }
 
     const headers =

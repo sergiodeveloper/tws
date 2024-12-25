@@ -1,10 +1,9 @@
 import type { OutputType, OutputTypeDefinition } from '@tws-js/common';
+import express from 'express';
 
 import type { EventMap, OperationMap, Schema } from './schema';
 import { SafeError } from './validation';
 import { Server } from './server';
-
-const express = require('express');
 
 const DEFAULT_MAX_REQUEST_BODY_BYTES = 1000000;
 const DEFAULT_SERVER_PATH = '/tws';
@@ -71,10 +70,21 @@ export abstract class HTTPServer {
         setHeader: (name: string, value: string) => unknown;
       },
     ): Promise<void> {
-      const body = await HTTPServer.getRequestBody({
-        request,
-        maxBodyBytes: options.maxRequestBodyBytes,
-      });
+      let body: string;
+
+      try {
+        body = await HTTPServer.getRequestBody({
+          request,
+          maxBodyBytes: options.maxRequestBodyBytes,
+        });
+      } catch (error) {
+        res.status(400);
+        res.setHeader(ACCESS_CONTROL_HEADER, options.allowedOrigin);
+        res.json({
+          errors: ['Failed to read request body', String(error)],
+        });
+        return;
+      }
 
       const cleanHeaders: Record<string, string> = {};
       Object.keys(request.headers).forEach((key) => {
@@ -172,7 +182,7 @@ export abstract class HTTPServer {
       },
     ) => {
       res.setHeader(ACCESS_CONTROL_HEADER, options.allowedOrigin);
-      res.setHeader('Access-Control-Allow-Methods', 'OPTIONS, GET, POST, PUT, DELETE');
+      res.setHeader('Access-Control-Allow-Methods', 'OPTIONS, GET, POST');
       res.setHeader('Access-Control-Allow-Headers', '*');
       res.setHeader('Access-Control-Max-Age', `${options.maxAge}`);
       res.status(200);
@@ -232,7 +242,7 @@ export abstract class HTTPServer {
       );
     }
 
-    if (options.schema.enableSchema || options.schema.enablePlayground) {
+    if (options.schema.enableSchema) {
       app.get(
         options.schemaPath ?? DEFAULT_SCHEMA_PATH,
         HTTPServer.createExpressSchemaListener({

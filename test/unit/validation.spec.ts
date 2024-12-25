@@ -1,7 +1,5 @@
 import { SafeError, Validation } from '../../src/validation';
 
-const OUTPUT_REQUIRED_ERROR = '"Output is required"';
-
 describe('Validation', () => {
   afterEach(() => {
     jest.restoreAllMocks();
@@ -23,51 +21,86 @@ describe('Validation', () => {
     expect(error.toString()).toBe('test');
   });
 
-  test('SafeError.toJSON successfully', async () => {
-    const error = new SafeError('test');
-    expect(error.toJSON()).toEqual('test');
+  test('valueTypeName with array', async () => {
+    expect(Validation.valueTypeName([])).toBe('array');
   });
 
-  test('unknownIsObject', async () => {
-    expect(Validation.unknownIsObject({})).toBe(true);
-    expect(Validation.unknownIsObject([])).toBe(false);
-    expect(Validation.unknownIsObject('test')).toBe(false);
-    expect(Validation.unknownIsObject(1)).toBe(false);
-    expect(Validation.unknownIsObject(true)).toBe(false);
-    expect(Validation.unknownIsObject(null)).toBe(false);
-    expect(Validation.unknownIsObject(undefined)).toBe(false);
+  test('valueTypeName with null', async () => {
+    expect(Validation.valueTypeName(null)).toBe('null');
+  });
+
+  test('valueTypeName with object', async () => {
+    expect(Validation.valueTypeName({})).toBe('object');
+  });
+
+  test('valueTypeName with string', async () => {
+    expect(Validation.valueTypeName('')).toBe('string');
   });
 
   test('validateString', async () => {
-    expect(Validation.validateString('myString', 'test')).toBe('test');
+    expect(Validation.validateString('myString', 'test', 'input')).toBe('test');
 
     expect(() => {
-      Validation.validateString('myString', 1);
-    }).toThrowErrorMatchingInlineSnapshot('""myString" must be a string"');
+      Validation.validateString('myString', 1, 'input');
+    }).toThrow('"myString" must be of type string, got number');
   });
 
   test('validateInt', async () => {
-    expect(Validation.validateInt('test', 1)).toBe(1);
+    expect(Validation.validateInt('test', 1, 'input')).toBe(1);
 
     expect(() => {
-      Validation.validateInt('test', 'test');
-    }).toThrowErrorMatchingInlineSnapshot('""test" must be a valid integer"');
+      Validation.validateInt('test', 'test', 'input');
+    }).toThrow('"test" must be of type integer, got string');
   });
 
   test('validateFloat', async () => {
-    expect(Validation.validateFloat('test', 1.1)).toBe(1.1);
+    expect(Validation.validateFloat('test', 1.1, 'input')).toBe(1.1);
 
     expect(() => {
-      Validation.validateFloat('test', 'test');
-    }).toThrowErrorMatchingInlineSnapshot('""test" must be a valid float"');
+      Validation.validateFloat('test', 'test', 'input');
+    }).toThrow('"test" must be of type float, got string');
   });
 
   test('validateBoolean', async () => {
-    expect(Validation.validateBoolean('test', true)).toBe(true);
+    expect(Validation.validateBoolean('test', true, 'input')).toBe(true);
 
     expect(() => {
-      Validation.validateBoolean('test', 'test');
-    }).toThrowErrorMatchingInlineSnapshot('""test" must be a boolean"');
+      Validation.validateBoolean('test', 'test', 'input');
+    }).toThrow('"test" must be of type boolean, got string');
+  });
+
+  test('validateObject', async () => {
+    expect(Validation.validateObject('test', {}, 'input')).toEqual({});
+
+    expect(() => Validation.validateObject('test', [], 'input')).toThrow(
+      '"test" must be of type object, got array',
+    );
+    expect(() => Validation.validateObject('field', 'test', 'output')).toThrow(
+      'Server error: output "field" must be of type object, got string',
+    );
+    expect(() => Validation.validateObject(null, 1, 'output')).toThrow(
+      'Server error: output must be of type object, got number',
+    );
+    expect(() => Validation.validateObject('test', true, 'input')).toThrow(
+      '"test" must be of type object, got boolean',
+    );
+    expect(() => Validation.validateObject('test', null, 'input')).toThrow(
+      '"test" must be of type object, got null',
+    );
+    expect(() => Validation.validateObject('test', undefined, 'input')).toThrow(
+      '"test" must be of type object, got undefined',
+    );
+  });
+
+  test('validateArray', async () => {
+    expect(Validation.validateArray('test', [], 'input')).toEqual([]);
+
+    expect(() => Validation.validateArray('test', {}, 'input')).toThrow(
+      '"test" must be of type array, got object',
+    );
+    expect(() => Validation.validateArray('field', 'test', 'output')).toThrow(
+      'Server error: output "field" must be of type array, got string',
+    );
   });
 
   test('validatePrimitiveInput successfully', async () => {
@@ -90,7 +123,7 @@ describe('Validation', () => {
     expect(result).toBe('test');
   });
 
-  test('validatePrimitiveInput with empty value not required', async () => {
+  test('validatePrimitiveInput with empty and non-required value', async () => {
     const result = Validation.validatePrimitiveInput('test', undefined, {
       type: 'string',
       description: '',
@@ -115,18 +148,17 @@ describe('Validation', () => {
         type: 'string',
         description: '',
       });
-    }).toThrowErrorMatchingInlineSnapshot('""test" must be a string"');
+    }).toThrow('"test" must be of type string, got number');
   });
 
   test('validatePrimitiveInput with unknown type', async () => {
     expect(() => {
       Validation.validatePrimitiveInput('test', 'test', {
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
+        // @ts-expect-error unknown type
         type: 'unknown',
         description: '',
       });
-    }).toThrowErrorMatchingInlineSnapshot('"Unknown primitive type "unknown" for "test""');
+    }).toThrow('Server error: unknown input type for "test"');
   });
 
   test('validateObjectInput successfully', async () => {
@@ -138,22 +170,16 @@ describe('Validation', () => {
       test: 'value',
     };
 
-    const result = Validation.validateObjectInput(
-      'test',
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      input,
-      {
-        type: 'object',
-        description: '',
-        properties: {
-          test: {
-            type: 'string',
-            description: '',
-          },
+    const result = Validation.validateObjectInput('test', input, {
+      type: 'object',
+      description: '',
+      properties: {
+        test: {
+          type: 'string',
+          description: '',
         },
       },
-    );
+    });
 
     expect(input).toEqual({
       test: 30,
@@ -199,7 +225,7 @@ describe('Validation', () => {
         description: '',
         properties: {},
       });
-    }).toThrowErrorMatchingInlineSnapshot('""test" is required"');
+    }).toThrowErrorMatchingInlineSnapshot('""test" must be of type object, got undefined"');
 
     expect(Validation.validateArrayInput).not.toHaveBeenCalled();
     expect(Validation.validatePrimitiveInput).not.toHaveBeenCalled();
@@ -212,18 +238,12 @@ describe('Validation', () => {
     jest.spyOn(Validation, 'validateEnumInput').mockImplementation(() => 'test');
 
     expect(() => {
-      Validation.validateObjectInput(
-        'test',
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        1,
-        {
-          type: 'object',
-          description: '',
-          properties: {},
-        },
-      );
-    }).toThrowErrorMatchingInlineSnapshot('""test" must be an object"');
+      Validation.validateObjectInput('test', 1, {
+        type: 'object',
+        description: '',
+        properties: {},
+      });
+    }).toThrowErrorMatchingInlineSnapshot('""test" must be of type object, got number"');
 
     expect(Validation.validateArrayInput).not.toHaveBeenCalled();
     expect(Validation.validatePrimitiveInput).not.toHaveBeenCalled();
@@ -239,25 +259,19 @@ describe('Validation', () => {
       test: ['value'],
     };
 
-    const result = Validation.validateObjectInput(
-      'test',
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      input,
-      {
-        type: 'object',
-        description: '',
-        properties: {
-          test: {
-            type: 'array',
-            item: {
-              type: 'string',
-              description: '',
-            },
+    const result = Validation.validateObjectInput('test', input, {
+      type: 'object',
+      description: '',
+      properties: {
+        test: {
+          type: 'array',
+          item: {
+            type: 'string',
+            description: '',
           },
         },
       },
-    );
+    });
 
     expect(input).toEqual({
       test: ['value'],
@@ -287,23 +301,17 @@ describe('Validation', () => {
       },
     };
 
-    const result = Validation.validateObjectInput(
-      'test',
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      input,
-      {
-        type: 'object',
-        description: '',
-        properties: {
-          test: {
-            type: 'object',
-            description: '',
-            properties: {},
-          },
+    const result = Validation.validateObjectInput('test', input, {
+      type: 'object',
+      description: '',
+      properties: {
+        test: {
+          type: 'object',
+          description: '',
+          properties: {},
         },
       },
-    );
+    });
 
     expect(input).toEqual({
       test: {
@@ -327,21 +335,15 @@ describe('Validation', () => {
       test: 'value',
     };
 
-    const result = Validation.validateObjectInput(
-      'test',
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      input,
-      {
-        type: 'object',
-        properties: {
-          test: {
-            type: 'enum',
-            values: {},
-          },
+    const result = Validation.validateObjectInput('test', input, {
+      type: 'object',
+      properties: {
+        test: {
+          type: 'enum',
+          values: {},
         },
       },
-    );
+    });
 
     expect(input).toEqual({
       test: 'value',
@@ -391,7 +393,7 @@ describe('Validation', () => {
         },
         defaultValue: 'value2',
       });
-    }).toThrowErrorMatchingInlineSnapshot('"Default value for "test" must be one of: value"');
+    }).toThrow('Server error: default value for "test" must be one of: "value"');
   });
 
   test('validateEnumInput with missing value', async () => {
@@ -406,6 +408,18 @@ describe('Validation', () => {
     }).toThrowErrorMatchingInlineSnapshot('""test" is required"');
   });
 
+  test('validateEnumInput with non-required value', async () => {
+    const result = Validation.validateEnumInput('test', undefined, {
+      type: 'enum',
+      required: false,
+      values: {
+        value: {},
+      },
+    });
+
+    expect(result).toEqual(undefined);
+  });
+
   test('validateEnumInput with non-string', async () => {
     expect(() => {
       Validation.validateEnumInput('test', 4, {
@@ -414,7 +428,7 @@ describe('Validation', () => {
           value: {},
         },
       });
-    }).toThrowErrorMatchingInlineSnapshot('""test" must be a string"');
+    }).toThrow('"test" must be of type string, got number');
   });
 
   test('validateEnumInput with invalid value', async () => {
@@ -425,7 +439,7 @@ describe('Validation', () => {
           value: {},
         },
       });
-    }).toThrowErrorMatchingInlineSnapshot('""test" must be one of: value"');
+    }).toThrow('"test" must be one of: "value"');
   });
 
   test('validateArrayInput', async () => {
@@ -465,7 +479,7 @@ describe('Validation', () => {
           description: '',
         },
       });
-    }).toThrowErrorMatchingInlineSnapshot('""field" is required"');
+    }).toThrowErrorMatchingInlineSnapshot('""field" must be of type array, got undefined"');
 
     expect(Validation.validateObjectInput).not.toHaveBeenCalled();
     expect(Validation.validatePrimitiveInput).not.toHaveBeenCalled();
@@ -476,20 +490,14 @@ describe('Validation', () => {
     jest.spyOn(Validation, 'validatePrimitiveInput').mockImplementation(() => 20);
 
     expect(() => {
-      Validation.validateArrayInput(
-        'test',
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        1,
-        {
-          type: 'array',
-          item: {
-            type: 'string',
-            description: '',
-          },
+      Validation.validateArrayInput('test', 1, {
+        type: 'array',
+        item: {
+          type: 'string',
+          description: '',
         },
-      );
-    }).toThrowErrorMatchingInlineSnapshot('""test" must be an array"');
+      });
+    }).toThrowErrorMatchingInlineSnapshot('""test" must be of type array, got number"');
 
     expect(Validation.validateObjectInput).not.toHaveBeenCalled();
     expect(Validation.validatePrimitiveInput).not.toHaveBeenCalled();
@@ -505,25 +513,19 @@ describe('Validation', () => {
       },
     ];
 
-    const result = Validation.validateArrayInput(
-      'test',
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      input,
-      {
-        type: 'array',
-        item: {
-          type: 'object',
-          description: '',
-          properties: {
-            test: {
-              type: 'string',
-              description: '',
-            },
+    const result = Validation.validateArrayInput('test', input, {
+      type: 'array',
+      item: {
+        type: 'object',
+        description: '',
+        properties: {
+          test: {
+            type: 'string',
+            description: '',
           },
         },
       },
-    );
+    });
 
     expect(result).toEqual(undefined);
 
@@ -558,21 +560,15 @@ describe('Validation', () => {
 
     const input = [['value']];
 
-    const result = Validation.validateArrayInput(
-      'test',
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      input,
-      {
+    const result = Validation.validateArrayInput('test', input, {
+      type: 'array',
+      item: {
         type: 'array',
         item: {
-          type: 'array',
-          item: {
-            type: 'string',
-          },
+          type: 'string',
         },
       },
-    );
+    });
 
     expect(result).toEqual(undefined);
 
@@ -593,21 +589,15 @@ describe('Validation', () => {
 
     const input = ['value'];
 
-    const result = Validation.validateArrayInput(
-      'test',
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      input,
-      {
-        type: 'array',
-        item: {
-          type: 'enum',
-          values: {
-            value: {},
-          },
+    const result = Validation.validateArrayInput('test', input, {
+      type: 'array',
+      item: {
+        type: 'enum',
+        values: {
+          value: {},
         },
       },
-    );
+    });
 
     expect(result).toEqual(undefined);
 
@@ -631,17 +621,12 @@ describe('Validation', () => {
       test: 'value',
     };
 
-    const result = Validation.validateRootObjectInput(
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      input,
-      {
-        test: {
-          type: 'string',
-          description: '',
-        },
+    const result = Validation.validateRootObjectInput(input, {
+      test: {
+        type: 'string',
+        description: '',
       },
-    );
+    });
 
     expect(result).toEqual({
       test: 30,
@@ -667,18 +652,13 @@ describe('Validation', () => {
     jest.spyOn(Validation, 'validatePrimitiveInput').mockImplementation(() => 30);
 
     expect(() =>
-      Validation.validateRootObjectInput(
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        null,
-        {
-          test: {
-            type: 'string',
-            description: '',
-          },
+      Validation.validateRootObjectInput(null, {
+        test: {
+          type: 'string',
+          description: '',
         },
-      ),
-    ).toThrowErrorMatchingInlineSnapshot('"Input is required"');
+      }),
+    ).toThrow('Input must be of type object, got null');
 
     expect(Validation.validateArrayInput).not.toHaveBeenCalled();
     expect(Validation.validateObjectInput).not.toHaveBeenCalled();
@@ -693,18 +673,13 @@ describe('Validation', () => {
     jest.spyOn(Validation, 'validatePrimitiveInput').mockImplementation(() => 30);
 
     expect(() =>
-      Validation.validateRootObjectInput(
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        10,
-        {
-          test: {
-            type: 'string',
-            description: '',
-          },
+      Validation.validateRootObjectInput(10, {
+        test: {
+          type: 'string',
+          description: '',
         },
-      ),
-    ).toThrowErrorMatchingInlineSnapshot('"Input must be an object"');
+      }),
+    ).toThrow('Input must be of type object, got number');
 
     expect(Validation.validateArrayInput).not.toHaveBeenCalled();
     expect(Validation.validateObjectInput).not.toHaveBeenCalled();
@@ -722,20 +697,15 @@ describe('Validation', () => {
       array: [10],
     };
 
-    const result = Validation.validateRootObjectInput(
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      input,
-      {
-        array: {
-          type: 'array',
-          item: {
-            type: 'int',
-            description: '',
-          },
+    const result = Validation.validateRootObjectInput(input, {
+      array: {
+        type: 'array',
+        item: {
+          type: 'int',
+          description: '',
         },
       },
-    );
+    });
 
     expect(result).toEqual(input);
 
@@ -764,22 +734,17 @@ describe('Validation', () => {
       },
     };
 
-    const result = Validation.validateRootObjectInput(
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      input,
-      {
-        myObject: {
-          type: 'object',
-          properties: {
-            attribute: {
-              type: 'boolean',
-              description: '',
-            },
+    const result = Validation.validateRootObjectInput(input, {
+      myObject: {
+        type: 'object',
+        properties: {
+          attribute: {
+            type: 'boolean',
+            description: '',
           },
         },
       },
-    );
+    });
 
     expect(result).toEqual(input);
 
@@ -814,19 +779,14 @@ describe('Validation', () => {
       myEnum: 'value',
     };
 
-    const result = Validation.validateRootObjectInput(
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      input,
-      {
-        myEnum: {
-          type: 'enum',
-          values: {
-            value: {},
-          },
+    const result = Validation.validateRootObjectInput(input, {
+      myEnum: {
+        type: 'enum',
+        values: {
+          value: {},
         },
       },
-    );
+    });
 
     expect(result).toEqual(input);
 
@@ -861,7 +821,6 @@ describe('Validation', () => {
   });
 
   test('validateAndCleanPrimitiveOutput with missing output', async () => {
-    jest.spyOn(Validation, 'validateString').mockImplementation(() => 'test');
     jest.spyOn(Validation, 'validateInt').mockImplementation(() => 10);
     jest.spyOn(Validation, 'validateFloat').mockImplementation(() => 3.5);
     jest.spyOn(Validation, 'validateBoolean').mockImplementation(() => true);
@@ -870,16 +829,14 @@ describe('Validation', () => {
       Validation.validateAndCleanPrimitiveOutput(null, undefined, {
         type: 'string',
       }),
-    ).toThrowErrorMatchingInlineSnapshot(OUTPUT_REQUIRED_ERROR);
+    ).toThrow('Server error: output must be of type string, got undefined');
 
-    expect(Validation.validateString).not.toHaveBeenCalled();
     expect(Validation.validateInt).not.toHaveBeenCalled();
     expect(Validation.validateFloat).not.toHaveBeenCalled();
     expect(Validation.validateBoolean).not.toHaveBeenCalled();
   });
 
   test('validateAndCleanPrimitiveOutput with missing named output', async () => {
-    jest.spyOn(Validation, 'validateString').mockImplementation(() => 'test');
     jest.spyOn(Validation, 'validateInt').mockImplementation(() => 10);
     jest.spyOn(Validation, 'validateFloat').mockImplementation(() => 3.5);
     jest.spyOn(Validation, 'validateBoolean').mockImplementation(() => true);
@@ -888,9 +845,8 @@ describe('Validation', () => {
       Validation.validateAndCleanPrimitiveOutput('test', undefined, {
         type: 'string',
       }),
-    ).toThrowErrorMatchingInlineSnapshot('"Output "test" is required"');
+    ).toThrow('Server error: output "test" must be of type string, got undefined');
 
-    expect(Validation.validateString).not.toHaveBeenCalled();
     expect(Validation.validateInt).not.toHaveBeenCalled();
     expect(Validation.validateFloat).not.toHaveBeenCalled();
     expect(Validation.validateBoolean).not.toHaveBeenCalled();
@@ -908,35 +864,7 @@ describe('Validation', () => {
 
     expect(result).toEqual('test');
 
-    expect(Validation.validateString).toHaveBeenCalledWith('', 'test');
-
-    expect(Validation.validateInt).not.toHaveBeenCalled();
-    expect(Validation.validateFloat).not.toHaveBeenCalled();
-    expect(Validation.validateBoolean).not.toHaveBeenCalled();
-  });
-
-  test('validateAndCleanPrimitiveOutput with invalid string', async () => {
-    jest.spyOn(Validation, 'validateString').mockImplementation(() => {
-      throw new Error('testError');
-    });
-    jest.spyOn(Validation, 'validateInt').mockImplementation(() => 10);
-    jest.spyOn(Validation, 'validateFloat').mockImplementation(() => 3.5);
-    jest.spyOn(Validation, 'validateBoolean').mockImplementation(() => true);
-
-    expect(() =>
-      Validation.validateAndCleanPrimitiveOutput(null, 50, {
-        type: 'string',
-      }),
-    ).toThrowErrorMatchingInlineSnapshot('"Output must be a string"');
-
-    expect(() =>
-      Validation.validateAndCleanPrimitiveOutput('test', 50, {
-        type: 'string',
-      }),
-    ).toThrowErrorMatchingInlineSnapshot('"Output "test" must be a string"');
-
-    expect(Validation.validateString).toHaveBeenCalledWith('', 50);
-    expect(Validation.validateString).toHaveBeenCalledWith('test', 50);
+    expect(Validation.validateString).toHaveBeenCalledWith(null, 'test', 'output');
 
     expect(Validation.validateInt).not.toHaveBeenCalled();
     expect(Validation.validateFloat).not.toHaveBeenCalled();
@@ -955,35 +883,7 @@ describe('Validation', () => {
 
     expect(result).toEqual(10);
 
-    expect(Validation.validateInt).toHaveBeenCalledWith('', 10);
-
-    expect(Validation.validateString).not.toHaveBeenCalled();
-    expect(Validation.validateFloat).not.toHaveBeenCalled();
-    expect(Validation.validateBoolean).not.toHaveBeenCalled();
-  });
-
-  test('validateAndCleanPrimitiveOutput with invalid int', async () => {
-    jest.spyOn(Validation, 'validateString').mockImplementation(() => 'test');
-    jest.spyOn(Validation, 'validateInt').mockImplementation(() => {
-      throw new Error('testError');
-    });
-    jest.spyOn(Validation, 'validateFloat').mockImplementation(() => 3.5);
-    jest.spyOn(Validation, 'validateBoolean').mockImplementation(() => true);
-
-    expect(() =>
-      Validation.validateAndCleanPrimitiveOutput(null, 3.5, {
-        type: 'int',
-      }),
-    ).toThrowErrorMatchingInlineSnapshot('"Output must be an integer, got: 3.5"');
-
-    expect(() =>
-      Validation.validateAndCleanPrimitiveOutput('test', 3.5, {
-        type: 'int',
-      }),
-    ).toThrowErrorMatchingInlineSnapshot('"Output "test" must be an integer"');
-
-    expect(Validation.validateInt).toHaveBeenCalledWith('', 3.5);
-    expect(Validation.validateInt).toHaveBeenCalledWith('test', 3.5);
+    expect(Validation.validateInt).toHaveBeenCalledWith(null, 10, 'output');
 
     expect(Validation.validateString).not.toHaveBeenCalled();
     expect(Validation.validateFloat).not.toHaveBeenCalled();
@@ -1002,35 +902,7 @@ describe('Validation', () => {
 
     expect(result).toEqual(3.5);
 
-    expect(Validation.validateFloat).toHaveBeenCalledWith('', 3.5);
-
-    expect(Validation.validateString).not.toHaveBeenCalled();
-    expect(Validation.validateInt).not.toHaveBeenCalled();
-    expect(Validation.validateBoolean).not.toHaveBeenCalled();
-  });
-
-  test('validateAndCleanPrimitiveOutput with invalid float', async () => {
-    jest.spyOn(Validation, 'validateString').mockImplementation(() => 'test');
-    jest.spyOn(Validation, 'validateInt').mockImplementation(() => 10);
-    jest.spyOn(Validation, 'validateFloat').mockImplementation(() => {
-      throw new Error('testError');
-    });
-    jest.spyOn(Validation, 'validateBoolean').mockImplementation(() => true);
-
-    expect(() =>
-      Validation.validateAndCleanPrimitiveOutput(null, 'test', {
-        type: 'float',
-      }),
-    ).toThrowErrorMatchingInlineSnapshot('"Output must be a float"');
-
-    expect(() =>
-      Validation.validateAndCleanPrimitiveOutput('a', 'test', {
-        type: 'float',
-      }),
-    ).toThrowErrorMatchingInlineSnapshot('"Output "a" must be a float"');
-
-    expect(Validation.validateFloat).toHaveBeenCalledWith('', 'test');
-    expect(Validation.validateFloat).toHaveBeenCalledWith('a', 'test');
+    expect(Validation.validateFloat).toHaveBeenCalledWith(null, 3.5, 'output');
 
     expect(Validation.validateString).not.toHaveBeenCalled();
     expect(Validation.validateInt).not.toHaveBeenCalled();
@@ -1049,39 +921,20 @@ describe('Validation', () => {
 
     expect(result).toEqual(true);
 
-    expect(Validation.validateBoolean).toHaveBeenCalledWith('', true);
+    expect(Validation.validateBoolean).toHaveBeenCalledWith(null, true, 'output');
 
     expect(Validation.validateString).not.toHaveBeenCalled();
     expect(Validation.validateInt).not.toHaveBeenCalled();
     expect(Validation.validateFloat).not.toHaveBeenCalled();
   });
 
-  test('validateAndCleanPrimitiveOutput with invalid boolean', async () => {
-    jest.spyOn(Validation, 'validateString').mockImplementation(() => 'test');
-    jest.spyOn(Validation, 'validateInt').mockImplementation(() => 10);
-    jest.spyOn(Validation, 'validateFloat').mockImplementation(() => 3.5);
-    jest.spyOn(Validation, 'validateBoolean').mockImplementation(() => {
-      throw new Error('testError');
-    });
-
+  test('validateAndCleanPrimitiveOutput with invalid type', async () => {
     expect(() =>
-      Validation.validateAndCleanPrimitiveOutput(null, 10, {
-        type: 'boolean',
+      Validation.validateAndCleanPrimitiveOutput(null, 'test', {
+        // @ts-expect-error invalid type
+        type: 'invalid',
       }),
-    ).toThrowErrorMatchingInlineSnapshot('"Output must be a boolean"');
-
-    expect(() =>
-      Validation.validateAndCleanPrimitiveOutput('a', 10, {
-        type: 'boolean',
-      }),
-    ).toThrowErrorMatchingInlineSnapshot('"Output "a" must be a boolean"');
-
-    expect(Validation.validateBoolean).toHaveBeenCalledWith('', 10);
-    expect(Validation.validateBoolean).toHaveBeenCalledWith('a', 10);
-
-    expect(Validation.validateString).not.toHaveBeenCalled();
-    expect(Validation.validateInt).not.toHaveBeenCalled();
-    expect(Validation.validateFloat).not.toHaveBeenCalled();
+    ).toThrow('Server error: unknown output type');
   });
 
   test('validateAndCleanEnumOutput', async () => {
@@ -1099,14 +952,14 @@ describe('Validation', () => {
         type: 'enum',
         values: { a: {}, b: {} },
       }),
-    ).toThrowErrorMatchingInlineSnapshot('"Output must be a string"');
+    ).toThrow('Server error: output must be of type string');
 
     expect(() =>
       Validation.validateAndCleanEnumOutput('a', 10, {
         type: 'enum',
         values: { a: {}, b: {} },
       }),
-    ).toThrowErrorMatchingInlineSnapshot('"Output "a" must be a string"');
+    ).toThrow('Server error: output "a" must be of type string, got number');
   });
 
   test('validateAndCleanEnumOutput with invalid value', async () => {
@@ -1115,14 +968,14 @@ describe('Validation', () => {
         type: 'enum',
         values: { a: {}, b: {} },
       }),
-    ).toThrowErrorMatchingInlineSnapshot('"Output must be one of: a, b"');
+    ).toThrow('Server error: output must be one of: "a", "b"');
 
     expect(() =>
       Validation.validateAndCleanEnumOutput('a', 'c', {
         type: 'enum',
         values: { a: {}, b: {} },
       }),
-    ).toThrowErrorMatchingInlineSnapshot('"Output "a" must be one of: a, b"');
+    ).toThrow('Server error: output "a" must be one of: "a", "b"');
 
     expect(() =>
       Validation.validateAndCleanEnumOutput(null, undefined, {
@@ -1130,7 +983,7 @@ describe('Validation', () => {
         values: { a: {}, b: {} },
         required: true,
       }),
-    ).toThrowErrorMatchingInlineSnapshot(OUTPUT_REQUIRED_ERROR);
+    ).toThrow('Server error: output must be of type string, got undefined');
 
     expect(() =>
       Validation.validateAndCleanEnumOutput('a', undefined, {
@@ -1138,7 +991,7 @@ describe('Validation', () => {
         values: { a: {}, b: {} },
         required: true,
       }),
-    ).toThrowErrorMatchingInlineSnapshot('"Output "a" is required"');
+    ).toThrow('Server error: output "a" must be of type string, got undefined');
 
     const result = Validation.validateAndCleanEnumOutput(null, undefined, {
       type: 'enum',
@@ -1185,7 +1038,7 @@ describe('Validation', () => {
           type: 'int',
         },
       }),
-    ).toThrowErrorMatchingInlineSnapshot('"Output must be an array"');
+    ).toThrow('Server error: output must be of type array, got number');
 
     expect(() =>
       Validation.validateAndCleanArrayOutput('a', 10, {
@@ -1194,7 +1047,7 @@ describe('Validation', () => {
           type: 'int',
         },
       }),
-    ).toThrowErrorMatchingInlineSnapshot('"Output "a" must be an array"');
+    ).toThrow('Server error: output "a" must be of type array, got number');
   });
 
   test('validateAndCleanArrayOutput with array of arrays', async () => {
@@ -1323,7 +1176,6 @@ describe('Validation', () => {
   });
 
   test('validateAndCleanObjectOutput', async () => {
-    jest.spyOn(Validation, 'unknownIsObject').mockImplementation(() => true);
     jest.spyOn(Validation, 'validateAndCleanArrayOutput').mockImplementation(() => ['ok']);
     jest.spyOn(Validation, 'validateAndCleanObjectOutput');
     jest.spyOn(Validation, 'validateAndCleanEnumOutput').mockImplementation(() => 'a');
@@ -1377,7 +1229,6 @@ describe('Validation', () => {
   });
 
   test('validateAndCleanObjectOutput with missing value', async () => {
-    jest.spyOn(Validation, 'unknownIsObject').mockImplementation(() => true);
     jest.spyOn(Validation, 'validateAndCleanArrayOutput').mockImplementation(() => ['ok']);
     jest.spyOn(Validation, 'validateAndCleanObjectOutput');
     jest.spyOn(Validation, 'validateAndCleanEnumOutput').mockImplementation(() => 'a');
@@ -1388,14 +1239,14 @@ describe('Validation', () => {
         type: 'object',
         properties: {},
       }),
-    ).toThrowErrorMatchingInlineSnapshot(OUTPUT_REQUIRED_ERROR);
+    ).toThrow('Server error: output must be of type object, got undefined');
 
     expect(() =>
       Validation.validateAndCleanObjectOutput('testName', null, {
         type: 'object',
         properties: {},
       }),
-    ).toThrowErrorMatchingInlineSnapshot('"Output "testName" is required"');
+    ).toThrow('Server error: output "testName" must be of type object, got null');
 
     expect(Validation.validateAndCleanPrimitiveOutput).not.toHaveBeenCalled();
     expect(Validation.validateAndCleanEnumOutput).not.toHaveBeenCalled();
@@ -1404,7 +1255,6 @@ describe('Validation', () => {
   });
 
   test('validateAndCleanObjectOutput with empty value', async () => {
-    jest.spyOn(Validation, 'unknownIsObject').mockImplementation(() => true);
     jest.spyOn(Validation, 'validateAndCleanArrayOutput').mockImplementation(() => ['ok']);
     jest.spyOn(Validation, 'validateAndCleanObjectOutput');
     jest.spyOn(Validation, 'validateAndCleanEnumOutput').mockImplementation(() => 'a');
@@ -1422,33 +1272,6 @@ describe('Validation', () => {
     expect(Validation.validateAndCleanEnumOutput).not.toHaveBeenCalled();
     expect(Validation.validateAndCleanArrayOutput).not.toHaveBeenCalled();
     expect(Validation.validateAndCleanObjectOutput).toHaveBeenCalledTimes(1);
-  });
-
-  test('validateAndCleanObjectOutput with non-object', async () => {
-    jest.spyOn(Validation, 'unknownIsObject').mockImplementation(() => false);
-    jest.spyOn(Validation, 'validateAndCleanArrayOutput').mockImplementation(() => ['ok']);
-    jest.spyOn(Validation, 'validateAndCleanObjectOutput');
-    jest.spyOn(Validation, 'validateAndCleanEnumOutput').mockImplementation(() => 'a');
-    jest.spyOn(Validation, 'validateAndCleanPrimitiveOutput').mockImplementation(() => 10);
-
-    expect(() =>
-      Validation.validateAndCleanObjectOutput(null, 20, {
-        type: 'object',
-        properties: {},
-      }),
-    ).toThrowErrorMatchingInlineSnapshot('"Output must be an object"');
-
-    expect(() =>
-      Validation.validateAndCleanObjectOutput('testName', 20, {
-        type: 'object',
-        properties: {},
-      }),
-    ).toThrowErrorMatchingInlineSnapshot('"Output "testName" must be an object"');
-
-    expect(Validation.validateAndCleanPrimitiveOutput).not.toHaveBeenCalled();
-    expect(Validation.validateAndCleanEnumOutput).not.toHaveBeenCalled();
-    expect(Validation.validateAndCleanArrayOutput).not.toHaveBeenCalled();
-    expect(Validation.validateAndCleanObjectOutput).toHaveBeenCalledTimes(2);
   });
 
   test('validateAndCleanOutput with object', async () => {

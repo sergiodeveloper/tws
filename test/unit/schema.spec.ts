@@ -201,18 +201,6 @@ describe('Schema', () => {
     );
   });
 
-  test('Schema.parseClientMessage with missing input', () => {
-    const schema = new Schema({});
-    const rawMessage = JSON.stringify({
-      operation: 'hello',
-    });
-
-    // @ts-expect-error private method
-    expect(() => schema.parseClientMessage(rawMessage)).toThrow(
-      'No input provided in client message',
-    );
-  });
-
   test('Schema.parseClientMessage with external headers', () => {
     const schema = new Schema({});
     const rawMessage = JSON.stringify({
