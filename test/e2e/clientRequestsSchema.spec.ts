@@ -1,4 +1,4 @@
-import { Schema } from '../../src';
+import { RemoteControl, Schema } from '../../src/schema';
 
 import { ServerProvider, HELLO_SCHEMA, httpGet, JSON_HEADER } from './utils';
 
@@ -110,6 +110,44 @@ describe('client requests schema', () => {
     expect(response.json).toEqual({
       operations: {},
       events: {},
+    });
+  });
+
+  test('get schema with Remote Control events', async () => {
+    const remoteControl = new RemoteControl({
+      events: {
+        testEvent: {
+          input: {
+            testInput: {
+              type: 'string',
+            },
+          },
+        },
+      },
+      eventSender: jest.fn(),
+    });
+
+    const server = await servers.createTwsHttpServer({
+      schema: new Schema({}, { remoteControl }),
+    });
+
+    const response = await httpGet({
+      url: `${server.url}/tws/schema`,
+      headers: JSON_HEADER,
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.json).toEqual({
+      events: {
+        testEvent: {
+          input: {
+            testInput: {
+              type: 'string',
+            },
+          },
+        },
+      },
+      operations: {},
     });
   });
 });
