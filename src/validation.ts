@@ -8,63 +8,153 @@ import type {
   PrimitiveOutputTypeDefinition,
 } from '@tws-js/common';
 
-export class ValidationError extends Error {
+/**
+ * Error that can be safely sent to the client.
+ */
+export class SafeError extends Error {
   constructor(message: string) {
-    super(message);
+    // Use only first line with a maximum length of 150 characters
+    const cutMessage = message.split('\n')[0].substring(0, 150).trim();
+
+    super(cutMessage);
+  }
+
+  toString(): string {
+    return this.message;
   }
 }
 
-const REQUIRED_OUTPUT_ERROR = 'Output is required';
+export abstract class Validation {
+  static valueTypeName(value: unknown): string {
+    if (Array.isArray(value)) {
+      return 'array';
+    }
 
-export class Validation {
-  private constructor() {
-    // no-op
+    if (value === null) {
+      return 'null';
+    }
+
+    return typeof value;
   }
 
-  static unknownIsObject(input: unknown): input is Record<string, unknown> {
+  static errorMessage(options: {
+    name: string | null;
+    expectedType: string;
+    receivedType: string;
+    type: 'input' | 'output';
+  }): string {
     return (
-      !!input &&
-      typeof input === 'object' &&
-      !Array.isArray(input) &&
-      Array.isArray(Object.keys(input))
+      `${options.type === 'output' ? 'Server error: output ' : ''}` +
+      `${options.type === 'output' ? (options.name ? '"' + options.name + '" ' : '') : ''}` +
+      `${options.type === 'input' ? (options.name ? '"' + options.name + '" ' : 'Input ') : ''}` +
+      `must be of type ${options.expectedType}, got ${options.receivedType}`
     );
   }
 
-  static validateString(name: string, input: unknown): string {
-    if (typeof input !== 'string') {
-      throw new ValidationError(`"${name}" must be a string`);
+  static validateString(name: string | null, value: unknown, type: 'input' | 'output'): string {
+    if (typeof value !== 'string') {
+      throw new SafeError(
+        Validation.errorMessage({
+          name,
+          expectedType: 'string',
+          receivedType: Validation.valueTypeName(value),
+          type,
+        }),
+      );
     }
 
-    return input;
+    return value;
   }
 
-  static validateInt(name: string, input: unknown): number {
+  static validateInt(name: string | null, input: unknown, type: 'input' | 'output'): number {
     if (
       typeof input !== 'number' ||
       !Number.isInteger(input) ||
       /^-?[0-9]+$/.test(`${input}`) === false
     ) {
-      throw new ValidationError(`"${name}" must be a valid integer`);
+      const isFloat = typeof input === 'number' && /^-?[0-9]+(\.[0-9]+)?$/.test(`${input}`);
+
+      throw new SafeError(
+        Validation.errorMessage({
+          name,
+          expectedType: 'integer',
+          receivedType: isFloat ? 'float' : Validation.valueTypeName(input),
+          type,
+        }),
+      );
     }
 
     return input;
   }
 
-  static validateFloat(name: string, input: unknown): number {
+  static validateFloat(name: string | null, input: unknown, type: 'input' | 'output'): number {
     if (
       typeof input !== 'number' ||
       Number.isNaN(input) ||
       /^-?[0-9]+(\.[0-9]+)?$/.test(`${input}`) === false
     ) {
-      throw new ValidationError(`"${name}" must be a valid float`);
+      throw new SafeError(
+        Validation.errorMessage({
+          name,
+          expectedType: 'float',
+          receivedType: Validation.valueTypeName(input),
+          type,
+        }),
+      );
     }
 
     return input;
   }
 
-  static validateBoolean(name: string, input: unknown): boolean {
+  static validateBoolean(name: string | null, input: unknown, type: 'input' | 'output'): boolean {
     if (typeof input !== 'boolean') {
-      throw new ValidationError(`"${name}" must be a boolean`);
+      throw new SafeError(
+        Validation.errorMessage({
+          name,
+          expectedType: 'boolean',
+          receivedType: Validation.valueTypeName(input),
+          type,
+        }),
+      );
+    }
+
+    return input;
+  }
+
+  static validateObject(
+    name: string | null,
+    input: unknown,
+    type: 'input' | 'output',
+  ): Record<string, unknown> {
+    if (
+      !input ||
+      typeof input !== 'object' ||
+      Array.isArray(input) ||
+      !Array.isArray(Object.keys(input))
+    ) {
+      throw new SafeError(
+        Validation.errorMessage({
+          name,
+          expectedType: 'object',
+          receivedType: Validation.valueTypeName(input),
+          type,
+        }),
+      );
+    }
+
+    return input as Record<string, unknown>;
+  }
+
+  static validateArray(name: string | null, input: unknown, type: 'input' | 'output'): unknown[] {
+    if (!Array.isArray(input)) {
+      throw new SafeError(
+        Validation.errorMessage({
+          name,
+          expectedType: 'array',
+          receivedType: Validation.valueTypeName(input),
+          type,
+        }),
+      );
     }
 
     return input;
@@ -77,27 +167,28 @@ export class Validation {
   ): string | number | boolean | undefined {
     if (input === undefined || input === null) {
       if (inputDefinition.defaultValue !== undefined) {
-        // Allow to set default value even if the type is different. The resolver will be typed correctly
+        // Allow to set default value even if the type is different. The resolver will be
+        // typed correctly
         return inputDefinition.defaultValue;
       }
 
       if (inputDefinition.required !== false) {
-        throw new ValidationError(`"${name}" is required`);
+        throw new SafeError(`"${name}" is required`);
       }
       return undefined;
     }
 
     switch (inputDefinition.type) {
       case 'string':
-        return Validation.validateString(name, input);
+        return Validation.validateString(name, input, 'input');
       case 'int':
-        return Validation.validateInt(name, input);
+        return Validation.validateInt(name, input, 'input');
       case 'float':
-        return Validation.validateFloat(name, input);
+        return Validation.validateFloat(name, input, 'input');
       case 'boolean':
-        return Validation.validateBoolean(name, input);
+        return Validation.validateBoolean(name, input, 'input');
       default:
-        throw new ValidationError(`Unknown primitive type "${inputDefinition.type}" for "${name}"`);
+        throw new SafeError(`Server error: unknown input type for "${name}"`);
     }
   }
 
@@ -109,20 +200,15 @@ export class Validation {
     input: unknown,
     inputDefinition: ObjectTypeDefinition,
   ): void {
-    if (input === undefined || input === null) {
-      if (inputDefinition.required !== false) {
-        throw new ValidationError(`"${name}" is required`);
-      }
+    if ((input === undefined || input === null) && inputDefinition.required === false) {
       return;
     }
 
-    if (!Validation.unknownIsObject(input)) {
-      throw new ValidationError(`"${name}" must be an object`);
-    }
+    const validatedObject = Validation.validateObject(name, input, 'input');
 
     Object.keys(inputDefinition.properties).forEach((fieldName) => {
       const fieldType = inputDefinition.properties[fieldName];
-      const fieldValue = input[fieldName];
+      const fieldValue = validatedObject[fieldName];
 
       if (fieldType.type === 'array') {
         Validation.validateArrayInput(fieldName, fieldValue, fieldType);
@@ -133,10 +219,9 @@ export class Validation {
       } else {
         const validated = Validation.validatePrimitiveInput(fieldName, fieldValue, fieldType);
 
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore Allow new field to be added to the input object if needed
-        // eslint-disable-next-line no-param-reassign
-        input[fieldName] = validated;
+        // Allow new field to be added to the input object if needed
+
+        validatedObject[fieldName] = validated;
       }
     });
   }
@@ -151,32 +236,38 @@ export class Validation {
         inputDefinition.defaultValue !== undefined &&
         !Object.keys(inputDefinition.values).includes(inputDefinition.defaultValue)
       ) {
-        throw new ValidationError(
-          `Default value for "${name}" must be one of: ${Object.keys(inputDefinition.values).join(
-            ', ',
-          )}`,
+        throw new SafeError(
+          `Server error: default value for "${name}" must be one of: ` +
+            Object.keys(inputDefinition.values)
+              .map((value) => `"${value}"`)
+              .join(', '),
         );
       }
 
-      if (inputDefinition.required !== false) {
-        throw new ValidationError(`"${name}" is required`);
+      if (inputDefinition.defaultValue !== undefined) {
+        return inputDefinition.defaultValue;
       }
 
-      return inputDefinition.defaultValue;
+      if (inputDefinition.required !== false) {
+        throw new SafeError(`"${name}" is required`);
+      }
+
+      return undefined;
     }
 
-    if (typeof input !== 'string') {
-      throw new ValidationError(`"${name}" must be a string`);
-    }
+    const inputString = Validation.validateString(name, input, 'input');
 
-    // if (!inputDefinition.values.includes(input)) {
-    if (!Object.keys(inputDefinition.values).includes(input)) {
-      throw new ValidationError(
-        `"${name}" must be one of: ${Object.keys(inputDefinition.values).join(', ')}`,
+    if (!Object.keys(inputDefinition.values).includes(inputString)) {
+      throw new SafeError(
+        `"${name}" must be one of: ` +
+          Object.keys(inputDefinition.values)
+            .map((value) => `"${value}"`)
+            .join(', ') +
+          `, got "${inputString}"`,
       );
     }
 
-    return input;
+    return inputString;
   }
 
   /**
@@ -187,48 +278,45 @@ export class Validation {
     input: unknown,
     inputDefinition: ArrayTypeDefinition,
   ): void {
-    if (!input) {
-      throw new ValidationError(`"${name}" is required`);
-    }
-    if (!Array.isArray(input)) {
-      throw new ValidationError(`"${name}" must be an array`);
-    }
+    const validatedArray = Validation.validateArray(name, input, 'input');
 
     const arrayItemType = inputDefinition.item;
 
     if (arrayItemType.type === 'object') {
-      (input as unknown[]).forEach((objectInput) => {
+      (validatedArray as unknown[]).forEach((objectInput) => {
         Validation.validateObjectInput(name, objectInput, arrayItemType);
       });
     } else if (arrayItemType.type === 'array') {
-      (input as unknown[]).forEach((arrayInput) => {
+      (validatedArray as unknown[]).forEach((arrayInput) => {
         Validation.validateArrayInput(name, arrayInput, arrayItemType);
       });
     } else if (arrayItemType.type === 'enum') {
-      (input as unknown[]).forEach((enumInput) => {
+      (validatedArray as unknown[]).forEach((enumInput) => {
         Validation.validateEnumInput(name, enumInput, arrayItemType);
       });
     } else {
-      (input as unknown[]).forEach((primitiveInput, index) => {
-        // eslint-disable-next-line no-param-reassign
-        input[index] = Validation.validatePrimitiveInput(name, primitiveInput, arrayItemType);
+      (validatedArray as unknown[]).forEach((primitiveInput, index) => {
+        validatedArray[index] = Validation.validatePrimitiveInput(
+          name,
+          primitiveInput,
+          arrayItemType,
+        );
       });
     }
   }
 
+  /**
+   * Validates the input object based on the input type definition.
+   *
+   * @throws {SafeError} if the input format is invalid.
+   */
   static validateRootObjectInput(
     input: unknown,
     inputDefinition: InputTypeDefinition,
   ): Record<string, unknown> {
-    if (!input) {
-      throw new ValidationError('Input is required');
-    }
+    const validatedObject = Validation.validateObject(null, input, 'input');
 
-    const inputCopy = JSON.parse(JSON.stringify(input)) as unknown;
-
-    if (!Validation.unknownIsObject(inputCopy)) {
-      throw new ValidationError('Input must be an object');
-    }
+    const inputCopy = JSON.parse(JSON.stringify(validatedObject)) as typeof validatedObject;
 
     Object.keys(inputDefinition).forEach((fieldName) => {
       const fieldType = inputDefinition[fieldName];
@@ -241,16 +329,14 @@ export class Validation {
       } else if (fieldType.type === 'enum') {
         const validated = Validation.validateEnumInput(fieldName, fieldValue, fieldType);
 
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore Allow new field to be added to the input object if needed
-        // eslint-disable-next-line no-param-reassign
+        // Allow new field to be added to the input object if needed
+
         inputCopy[fieldName] = validated;
       } else {
         const validated = Validation.validatePrimitiveInput(fieldName, fieldValue, fieldType);
 
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore Allow new field to be added to the input object if needed
-        // eslint-disable-next-line no-param-reassign
+        // Allow new field to be added to the input object if needed
+
         inputCopy[fieldName] = validated;
       }
     });
@@ -258,102 +344,63 @@ export class Validation {
     return inputCopy;
   }
 
-  // eslint-disable-next-line sonarjs/cognitive-complexity
   static validateAndCleanPrimitiveOutput(
     name: string | null,
     value: unknown,
     type: PrimitiveOutputTypeDefinition,
   ): unknown {
-    if (value === undefined || value === null) {
-      if (type.required !== false) {
-        if (name) {
-          throw new ValidationError(`Output "${name}" is required`);
-        }
-        throw new ValidationError(REQUIRED_OUTPUT_ERROR);
-      }
-
-      return undefined;
+    if ((value === undefined || value === null) && type.required === false) {
+      return;
     }
 
     if (type.type === 'string') {
-      try {
-        return Validation.validateString(name || '', value);
-      } catch (error) {
-        if (name) {
-          throw new ValidationError(`Output "${name}" must be a string`);
-        }
-        throw new ValidationError('Output must be a string');
-      }
+      return Validation.validateString(name, value, 'output');
     }
 
     if (type.type === 'int') {
-      try {
-        return Validation.validateInt(name || '', value);
-      } catch (error) {
-        if (name) {
-          throw new ValidationError(`Output "${name}" must be an integer`);
-        }
-        throw new ValidationError('Output must be an integer, got: ' + JSON.stringify(value));
-      }
+      return Validation.validateInt(name, value, 'output');
     }
 
     if (type.type === 'float') {
-      try {
-        return Validation.validateFloat(name || '', value);
-      } catch (error) {
-        if (name) {
-          throw new ValidationError(`Output "${name}" must be a float`);
-        }
-        throw new ValidationError('Output must be a float');
-      }
+      return Validation.validateFloat(name, value, 'output');
     }
 
     if (type.type === 'boolean') {
-      try {
-        return Validation.validateBoolean(name || '', value);
-      } catch (error) {
-        if (name) {
-          throw new ValidationError(`Output "${name}" must be a boolean`);
-        }
-        throw new ValidationError('Output must be a boolean');
-      }
+      return Validation.validateBoolean(name, value, 'output');
     }
+
+    throw new SafeError('Server error: unknown output type' + (name ? ` in "${name}"` : ''));
   }
 
-  // eslint-disable-next-line sonarjs/cognitive-complexity
   static validateAndCleanEnumOutput(
     name: string | null,
     value: unknown,
     type: EnumTypeDefinition,
   ): string | undefined {
-    if (value === undefined || value === null) {
-      if (type.required !== false) {
-        if (name) {
-          throw new ValidationError(`Output "${name}" is required`);
-        }
-        throw new ValidationError(REQUIRED_OUTPUT_ERROR);
-      }
-
-      return undefined;
+    if ((value === undefined || value === null) && type.required === false) {
+      return;
     }
 
-    if (typeof value !== 'string') {
-      if (name) {
-        throw new ValidationError(`Output "${name}" must be a string`);
-      }
-      throw new ValidationError('Output must be a string');
-    }
+    const valueString = Validation.validateString(name, value, 'output');
 
-    if (!Object.keys(type.values).includes(value)) {
+    if (!Object.keys(type.values).includes(valueString)) {
       if (name) {
-        throw new ValidationError(
-          `Output "${name}" must be one of: ${Object.keys(type.values).join(', ')}`,
+        throw new SafeError(
+          `Server error: output "${name}" must be one of: ` +
+            Object.keys(type.values)
+              .map((value) => `"${value}"`)
+              .join(', '),
         );
       }
-      throw new ValidationError(`Output must be one of: ${Object.keys(type.values).join(', ')}`);
+      throw new SafeError(
+        `Server error: output must be one of: ` +
+          Object.keys(type.values)
+            .map((value) => `"${value}"`)
+            .join(', '),
+      );
     }
 
-    return value;
+    return valueString;
   }
 
   static validateAndCleanArrayOutput(
@@ -361,14 +408,9 @@ export class Validation {
     value: unknown,
     type: ArrayTypeDefinition,
   ): unknown[] {
-    if (!Array.isArray(value)) {
-      if (name) {
-        throw new ValidationError(`Output "${name}" must be an array`);
-      }
-      throw new ValidationError('Output must be an array');
-    }
+    const validatedArray = Validation.validateArray(name, value, 'output');
 
-    return (value as unknown[]).map((item) => {
+    return (validatedArray as unknown[]).map((item) => {
       if (type.item.type === 'array') {
         return Validation.validateAndCleanArrayOutput(null, item, type.item);
       } else if (type.item.type === 'object') {
@@ -380,35 +422,22 @@ export class Validation {
     });
   }
 
-  // eslint-disable-next-line sonarjs/cognitive-complexity
   static validateAndCleanObjectOutput(
     name: string | null,
     value: unknown,
     type: ObjectTypeDefinition,
   ): Record<string, unknown> | undefined {
-    if (value === undefined || value === null) {
-      if (type.required !== false) {
-        if (name) {
-          throw new ValidationError(`Output "${name}" is required`);
-        }
-        throw new ValidationError(REQUIRED_OUTPUT_ERROR);
-      }
-
-      return undefined;
+    if ((value === undefined || value === null) && type.required === false) {
+      return;
     }
 
-    if (!Validation.unknownIsObject(value)) {
-      if (name) {
-        throw new ValidationError(`Output "${name}" must be an object`);
-      }
-      throw new ValidationError('Output must be an object');
-    }
+    const validatedObject = Validation.validateObject(name, value, 'output');
 
     const cleanOutput = {} as Record<string, unknown>;
 
     Object.keys(type.properties).forEach((fieldName) => {
       const fieldType = type.properties[fieldName];
-      const fieldValue = value[fieldName];
+      const fieldValue = validatedObject[fieldName];
 
       if (fieldType.type === 'array') {
         cleanOutput[fieldName] = Validation.validateAndCleanArrayOutput(
@@ -440,6 +469,11 @@ export class Validation {
     return cleanOutput;
   }
 
+  /**
+   * Clones and validates the output against the given output type.
+   *
+   * @throws {SafeError} if the output format is invalid.
+   */
   static validateAndCleanOutput(outputType: OutputTypeDefinition, output: unknown): unknown {
     const outputCopy =
       output === undefined || output === null

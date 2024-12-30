@@ -24,6 +24,8 @@ module.exports = {
     },
   },
   rules: {
+    'max-len': ['error', 100, 2, { "ignoreUrls": true, "ignoreComments": false }],
+
     'import/order': [
       'error',
       {
@@ -66,5 +68,6 @@ module.exports = {
     'object-shorthand': 'error',
     'no-plusplus': 'error',
     'no-param-reassign': ['error', { props: true }],
+    '@typescript-eslint/no-var-requires': 'off',
   }
 };

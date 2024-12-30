@@ -24,6 +24,8 @@ module.exports = {
     },
   },
   rules: {
+    'max-len': ['error', 100, 2, { "ignoreUrls": true, "ignoreComments": false }],
+
     'import/order': [
       'error',
       {
@@ -32,7 +34,7 @@ module.exports = {
       }
     ],
 
-    'sonarjs/cognitive-complexity': ['error', 11],
+    'sonarjs/cognitive-complexity': ['error', 13],
     "curly": "error",
 
     'no-process-exit': 'error',
@@ -66,5 +68,6 @@ module.exports = {
     'object-shorthand': 'error',
     'no-plusplus': 'error',
     'no-param-reassign': ['error', { props: true }],
+    '@typescript-eslint/no-var-requires': 'off',
   }
 };
