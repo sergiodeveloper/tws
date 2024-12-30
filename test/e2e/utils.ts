@@ -1,9 +1,15 @@
 import { createServer } from 'net';
 
-import { WebSocketServer } from 'ws';
 import { WebSocket as WebSocketClient } from 'isomorphic-ws';
 
-import { EventMap, HTTPServer, Operation, OperationMap, Schema } from '../../src';
+import {
+  EventMap,
+  HTTPServerHelper,
+  Operation,
+  OperationMap,
+  Schema,
+  WebSocketServerHelper,
+} from '../../src';
 
 export const JSON_HEADER = {
   'Content-Type': 'application/json',
@@ -98,9 +104,9 @@ export class ServerProvider {
   private servers: { stop: () => Promise<void> }[] = [];
 
   async createTwsHttpServer<T extends OperationMap, U extends EventMap>(
-    options: Parameters<typeof HTTPServer.create<T, U>>[0],
+    options: Parameters<typeof HTTPServerHelper.create<T, U>>[0],
   ) {
-    const expressServer = HTTPServer.create(options);
+    const expressServer = HTTPServerHelper.create(options);
 
     const port = await freePortInRange(4000, 45000);
 
@@ -119,31 +125,18 @@ export class ServerProvider {
     return server;
   }
 
-  async createSimpleWebSocketServer(options: {
+  async createTwsWebSocketServer<T extends OperationMap, U extends EventMap>(options: {
+    schema: Schema<T, U>;
     onClientConnected: (clientId: string, ws: import('ws').WebSocket) => void;
     onClientDisconnected: (clientId: string, ws: import('ws').WebSocket) => void;
   }) {
     const port = await freePortInRange(4000, 45000);
 
-    const wss = new WebSocketServer({ port });
-
-    const server = {
-      url: `ws://localhost:${port}`,
-      stop: async () => wss.clients.forEach((client) => client.terminate()),
-    };
-
-    wss.on('connection', (ws) => {
-      const randomId = Array(8)
-        .fill(0)
-        .map(() => Math.random().toString(36).substring(2))
-        .join('')
-        .substring(0, 10);
-
-      options.onClientConnected(randomId, ws);
-
-      ws.on('close', () => {
-        options.onClientDisconnected(randomId, ws);
-      });
+    const server = WebSocketServerHelper.create({
+      port,
+      schema: options.schema,
+      onClientConnected: options.onClientConnected,
+      onClientDisconnected: options.onClientDisconnected,
     });
 
     this.servers.push(server);
@@ -243,7 +236,7 @@ export async function httpOptions(options: { url: string; headers: Record<string
   };
 }
 
-export async function waitFor(callback: () => boolean, interval = 50, timeout = 5000) {
+export async function waitFor(callback: () => boolean, interval = 5, timeout = 100) {
   return new Promise((resolve, reject) => {
     const start = Date.now();
 

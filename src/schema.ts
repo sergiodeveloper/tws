@@ -16,6 +16,7 @@ export interface ClientMessage {
   operation: string;
   headers: Record<string, string>;
   input: unknown;
+  transactionId?: string;
 }
 
 /**
@@ -153,20 +154,21 @@ export class Schema<Operations extends OperationMap, Events extends EventMap> {
    *
    * @throws {SafeError} if the message format is invalid.
    */
-  private parseClientMessage(
-    rawMessage: string,
-    externalHeaders?: Record<string, string>,
-  ): ClientMessage {
+  private parseClientMessage(options: {
+    rawMessage: string;
+    externalHeaders?: Record<string, string>;
+    requireTransactionId?: boolean;
+  }): ClientMessage {
     let message: {
       operation?: unknown;
       headers?: unknown;
       input?: unknown;
+      transactionId?: unknown;
     };
 
     try {
-      message = JSON.parse(rawMessage);
+      message = JSON.parse(options.rawMessage);
     } catch (e) {
-      // this.logger?.error?.(`Failed to parse client message, check if it is a valid JSON: ${e}`);
       throw new SafeError('Failed to parse client message, check if it is a valid JSON');
     }
 
@@ -174,17 +176,25 @@ export class Schema<Operations extends OperationMap, Events extends EventMap> {
       throw new SafeError('No operation provided in client message');
     }
 
+    if (options.requireTransactionId && typeof message.transactionId !== 'string') {
+      throw new SafeError('No transactionId provided in client message. Expected a string');
+    }
+
     const headers =
       message.headers && typeof message.headers === 'object'
         ? Object.fromEntries(
             Object.entries(message.headers).map(([key, value]) => [key, String(value)]),
           )
-        : externalHeaders;
+        : options.externalHeaders;
 
     return {
       operation: message.operation,
       headers: headers || {},
       input: message.input,
+      transactionId:
+        options.requireTransactionId && typeof message.transactionId === 'string'
+          ? message.transactionId
+          : undefined,
     };
   }
 
@@ -196,7 +206,7 @@ export class Schema<Operations extends OperationMap, Events extends EventMap> {
    *
    * The result from the operation handler is returned.
    *
-   * The rawMessage should be the body of the request received from the client. It
+   * The body should be the body of the request received from the client. It
    * contains the attributes `operation`, `input` and optionally `headers`. If the
    * headers are not received in the body (for example, in HTTP servers), they can be
    * passed in the `externalHeaders` parameter.
@@ -210,16 +220,22 @@ export class Schema<Operations extends OperationMap, Events extends EventMap> {
   public async executeClientRequest(options: {
     body: string;
     externalHeaders?: Record<string, string>;
+    requireTransactionId?: boolean;
   }): Promise<{
     data?: OutputType<Operations[keyof Operations]['output']>;
     errors?: string[];
+    transactionId?: string;
   }> {
     const errors: string[] = [];
 
     let message;
 
     try {
-      message = this.parseClientMessage(options.body, options.externalHeaders);
+      message = this.parseClientMessage({
+        rawMessage: options.body,
+        externalHeaders: options.externalHeaders,
+        requireTransactionId: options.requireTransactionId,
+      });
     } catch (e) {
       errors.push(String(e));
 
@@ -261,7 +277,8 @@ export class Schema<Operations extends OperationMap, Events extends EventMap> {
 
     return {
       data,
-      errors,
+      errors: errors.length > 0 ? errors : undefined,
+      transactionId: message.transactionId,
     };
   }
 }

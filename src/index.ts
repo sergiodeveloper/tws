@@ -11,5 +11,6 @@ export {
 } from './schema';
 
 export { Server } from './server';
-export { HTTPServer } from './httpServer';
+export { HTTPServerHelper } from './httpServerHelper';
+export { WebSocketServerHelper } from './webSocketServerHelper';
 export { SafeError } from './validation';

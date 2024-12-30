@@ -24,7 +24,7 @@ npm install @tws-js/server
 Start the server:
 
 ```typescript
-import { Operation, Schema, HTTPServer } from '@tws-js/server';
+import { Operation, Schema, HTTPServerHelper } from '@tws-js/server';
 
 const schema = new Schema({
   hello: new Operation({
@@ -59,7 +59,7 @@ const schema = new Schema({
   enablePlayground: true,
 });
 
-const server = HTTPServer.create({
+const server = HTTPServerHelper.create({
   schema,
   path: '/tws',
 });
@@ -91,7 +91,7 @@ Check the response:
 ### Setup
 
 ```bash
-nvm use 18
+nvm use 20
 npm install
 ```
 

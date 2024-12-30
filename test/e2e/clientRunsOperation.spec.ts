@@ -19,6 +19,8 @@ describe('client runs operation', () => {
   });
 
   test('execute an existing operation', async () => {
+    const schemaHandlerSpy = jest.spyOn(HELLO_SCHEMA.operations.hello, 'handler' as never);
+
     const server = await servers.createTwsHttpServer({
       schema: HELLO_SCHEMA,
     });
@@ -40,6 +42,18 @@ describe('client runs operation', () => {
     expect(response1.json).toEqual({
       data: 'Hello world!',
     });
+
+    expect(schemaHandlerSpy).toHaveBeenCalledTimes(1);
+    expect(schemaHandlerSpy).toHaveBeenCalledWith(
+      {
+        name: 'world',
+      },
+      {
+        headers: expect.objectContaining({
+          'content-type': 'application/json',
+        }),
+      },
+    );
 
     const response2 = await httpPost({
       url: `${server.url}/tws`,

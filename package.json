@@ -17,7 +17,8 @@
   },
   "dependencies": {
     "@tws-js/common": "^1.0.0",
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "@types/express": "^4.17.17",
@@ -34,8 +35,7 @@
     "eslint-plugin-sonarjs": "^0.18.0",
     "isomorphic-ws": "^5.0.0",
     "nodemon": "^3.1.9",
-    "typescript": "^5.7.2",
-    "ws": "^8.18.0"
+    "typescript": "^5.7.2"
   },
   "nodemonConfig": {
     "ext": "ts,js,json"

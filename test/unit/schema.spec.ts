@@ -164,7 +164,9 @@ describe('Schema', () => {
     });
 
     // @ts-expect-error private method
-    const result = schema.parseClientMessage(rawMessage);
+    const result = schema.parseClientMessage({
+      rawMessage,
+    });
 
     expect(result).toEqual({
       operation: 'hello',
@@ -181,10 +183,12 @@ describe('Schema', () => {
     const schema = new Schema({});
     const rawMessage = 'invalid json';
 
-    // @ts-expect-error private method
-    expect(() => schema.parseClientMessage(rawMessage)).toThrow(
-      'Failed to parse client message, check if it is a valid JSON',
-    );
+    expect(() =>
+      // @ts-expect-error private method
+      schema.parseClientMessage({
+        rawMessage,
+      }),
+    ).toThrow('Failed to parse client message, check if it is a valid JSON');
   });
 
   test('Schema.parseClientMessage with missing operation', () => {
@@ -195,10 +199,12 @@ describe('Schema', () => {
       },
     });
 
-    // @ts-expect-error private method
-    expect(() => schema.parseClientMessage(rawMessage)).toThrow(
-      'No operation provided in client message',
-    );
+    expect(() =>
+      // @ts-expect-error private method
+      schema.parseClientMessage({
+        rawMessage,
+      }),
+    ).toThrow('No operation provided in client message');
   });
 
   test('Schema.parseClientMessage with external headers', () => {
@@ -211,8 +217,11 @@ describe('Schema', () => {
     });
 
     // @ts-expect-error private method
-    const result = schema.parseClientMessage(rawMessage, {
-      testHeader: 'testExternalHeader',
+    const result = schema.parseClientMessage({
+      rawMessage,
+      externalHeaders: {
+        testHeader: 'testExternalHeader',
+      },
     });
 
     expect(result).toEqual({
@@ -236,7 +245,9 @@ describe('Schema', () => {
     });
 
     // @ts-expect-error private method
-    const result = schema.parseClientMessage(rawMessage);
+    const result = schema.parseClientMessage({
+      rawMessage,
+    });
 
     expect(result).toEqual({
       operation: 'hello',
@@ -245,6 +256,24 @@ describe('Schema', () => {
         testInput: 'testInputValue',
       },
     });
+  });
+
+  test('Schema.parseClientMessage with missing transactionId', () => {
+    const schema = new Schema({});
+    const rawMessage = JSON.stringify({
+      operation: 'hello',
+      input: {
+        testInput: 'testInputValue',
+      },
+    });
+
+    expect(() => {
+      // @ts-expect-error private method
+      schema.parseClientMessage({
+        rawMessage,
+        requireTransactionId: true,
+      });
+    }).toThrow('No transactionId provided in client message. Expected a string');
   });
 
   test('Schema.executeClientRequest successfully', async () => {
@@ -279,7 +308,6 @@ describe('Schema', () => {
       data: {
         value: 'result',
       },
-      errors: [],
     });
 
     expect(mockThis.execute).toHaveBeenCalledWith(
@@ -294,8 +322,8 @@ describe('Schema', () => {
       },
     );
 
-    expect(mockThis.parseClientMessage).toHaveBeenCalledWith(
-      JSON.stringify({
+    expect(mockThis.parseClientMessage).toHaveBeenCalledWith({
+      rawMessage: JSON.stringify({
         operation: 'hello',
         input: {
           testInput: 'testInputValue',
@@ -304,8 +332,8 @@ describe('Schema', () => {
           testHeader: 'testInternalHeader',
         },
       }),
-      undefined,
-    );
+      externalHeaders: undefined,
+    });
   });
 
   test('Schema.executeClientRequest with external headers', async () => {
@@ -340,7 +368,6 @@ describe('Schema', () => {
       data: {
         value: 'result',
       },
-      errors: [],
     });
 
     expect(mockThis.execute).toHaveBeenCalledWith(

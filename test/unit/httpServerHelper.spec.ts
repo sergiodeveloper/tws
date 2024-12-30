@@ -1,4 +1,4 @@
-import { EventMap, HTTPServer, OperationMap, Schema, Server } from '../../src/index';
+import { EventMap, HTTPServerHelper, OperationMap, Schema, Server } from '../../src/index';
 
 const ACCESS_CONTROL_HEADER = 'Access-Control-Allow-Origin';
 
@@ -16,7 +16,7 @@ describe('Server', () => {
       }),
     };
 
-    const result = await HTTPServer.getRequestBody({
+    const result = await HTTPServerHelper.getRequestBody({
       request: req,
       maxBodyBytes: 100,
     });
@@ -32,7 +32,7 @@ describe('Server', () => {
     };
 
     await expect(
-      HTTPServer.getRequestBody({
+      HTTPServerHelper.getRequestBody({
         request: req,
         maxBodyBytes: 1,
       }),
@@ -48,7 +48,7 @@ describe('Server', () => {
 
     const logger = { error: jest.fn() };
 
-    const listener = HTTPServer.createExpressServerListener({
+    const listener = HTTPServerHelper.createExpressServerListener({
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       schema,
@@ -74,7 +74,7 @@ describe('Server', () => {
 
     const logger = { error: jest.fn() };
 
-    const listener = HTTPServer.createExpressServerListener({
+    const listener = HTTPServerHelper.createExpressServerListener({
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       schema,
@@ -83,7 +83,7 @@ describe('Server', () => {
       allowedOrigin: '*',
     });
 
-    jest.spyOn(HTTPServer, 'getRequestBody').mockResolvedValue('body');
+    jest.spyOn(HTTPServerHelper, 'getRequestBody').mockResolvedValue('body');
 
     const req = {
       on: jest.fn().mockImplementation((event, cb) => {
@@ -103,7 +103,7 @@ describe('Server', () => {
 
     await listener(req, res);
 
-    expect(HTTPServer.getRequestBody).toHaveBeenCalledWith({
+    expect(HTTPServerHelper.getRequestBody).toHaveBeenCalledWith({
       request: req,
       maxBodyBytes: 100,
     });
@@ -130,9 +130,9 @@ describe('Server', () => {
 
     const logger = { error: jest.fn() };
 
-    jest.spyOn(HTTPServer, 'getRequestBody').mockRejectedValue(new Error('testError'));
+    jest.spyOn(HTTPServerHelper, 'getRequestBody').mockRejectedValue(new Error('testError'));
 
-    const listener = HTTPServer.createExpressServerListener({
+    const listener = HTTPServerHelper.createExpressServerListener({
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       schema,
@@ -176,7 +176,7 @@ describe('Server', () => {
 
     const logger = { error: jest.fn() };
 
-    const listener = HTTPServer.createExpressServerListener({
+    const listener = HTTPServerHelper.createExpressServerListener({
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       schema,
@@ -185,7 +185,7 @@ describe('Server', () => {
       allowedOrigin: '*',
     });
 
-    jest.spyOn(HTTPServer, 'getRequestBody').mockResolvedValue('body');
+    jest.spyOn(HTTPServerHelper, 'getRequestBody').mockResolvedValue('body');
 
     const req = {
       on: jest.fn().mockImplementation((event, cb) => {
@@ -204,7 +204,7 @@ describe('Server', () => {
 
     await listener(req, res);
 
-    expect(HTTPServer.getRequestBody).toHaveBeenCalledWith({
+    expect(HTTPServerHelper.getRequestBody).toHaveBeenCalledWith({
       request: req,
       maxBodyBytes: 100,
     });
@@ -221,7 +221,7 @@ describe('Server', () => {
   });
 
   test('createExpressPlaygroundListener successfully', async () => {
-    const listener = HTTPServer.createExpressPlaygroundListener({
+    const listener = HTTPServerHelper.createExpressPlaygroundListener({
       allowedOrigin: '*',
       schemaPath: '/schema',
       serverPath: '/server',
@@ -233,7 +233,7 @@ describe('Server', () => {
   test('createExpressPlaygroundListener handler', async () => {
     jest.spyOn(Server, 'processPlaygroundRequest').mockReturnValue('testHtml');
 
-    const listener = HTTPServer.createExpressPlaygroundListener({
+    const listener = HTTPServerHelper.createExpressPlaygroundListener({
       allowedOrigin: '*',
       schemaPath: '/schema',
       serverPath: '/server',
@@ -264,7 +264,7 @@ describe('Server', () => {
       execute: jest.fn(),
     } as never;
 
-    const listener = HTTPServer.createExpressSchemaListener({ schema, allowedOrigin: '*' });
+    const listener = HTTPServerHelper.createExpressSchemaListener({ schema, allowedOrigin: '*' });
 
     expect(listener).toBeInstanceOf(Function);
   });
@@ -276,7 +276,7 @@ describe('Server', () => {
       execute: jest.fn(),
     } as never;
 
-    const listener = HTTPServer.createExpressSchemaListener({ schema, allowedOrigin: '*' });
+    const listener = HTTPServerHelper.createExpressSchemaListener({ schema, allowedOrigin: '*' });
 
     const req = {
       headers: {
@@ -302,7 +302,7 @@ describe('Server', () => {
   });
 
   test('createExpressOptionsListener successfully', async () => {
-    const listener = HTTPServer.createExpressOptionsListener({
+    const listener = HTTPServerHelper.createExpressOptionsListener({
       allowedOrigin: '*',
       maxAge: 100,
     });
@@ -311,7 +311,7 @@ describe('Server', () => {
   });
 
   test('createExpressOptionsListener handler', async () => {
-    const listener = HTTPServer.createExpressOptionsListener({
+    const listener = HTTPServerHelper.createExpressOptionsListener({
       allowedOrigin: 'test',
       maxAge: 100,
     });
@@ -333,7 +333,7 @@ describe('Server', () => {
   });
 
   test('createEmptyExpressServer', async () => {
-    const app = HTTPServer.createEmptyExpressServer();
+    const app = HTTPServerHelper.createEmptyExpressServer();
 
     expect(app).toBeInstanceOf(Function);
   });
@@ -352,29 +352,31 @@ describe('Server', () => {
       get: jest.fn(),
       options: jest.fn(),
     };
-    jest.spyOn(HTTPServer, 'createEmptyExpressServer').mockReturnValue(
+    jest.spyOn(HTTPServerHelper, 'createEmptyExpressServer').mockReturnValue(
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       fakeExpress,
     );
 
     const fakeListener = jest.fn();
-    jest.spyOn(HTTPServer, 'createExpressServerListener').mockReturnValue(fakeListener);
+    jest.spyOn(HTTPServerHelper, 'createExpressServerListener').mockReturnValue(fakeListener);
 
     const fakeListenerPlayground = jest.fn();
     jest
-      .spyOn(HTTPServer, 'createExpressPlaygroundListener')
+      .spyOn(HTTPServerHelper, 'createExpressPlaygroundListener')
       .mockReturnValue(fakeListenerPlayground);
 
     const fakeListenerSchema = jest.fn();
-    jest.spyOn(HTTPServer, 'createExpressSchemaListener').mockReturnValue(fakeListenerSchema);
+    jest.spyOn(HTTPServerHelper, 'createExpressSchemaListener').mockReturnValue(fakeListenerSchema);
 
     const fakeListenerOptions = jest.fn();
-    jest.spyOn(HTTPServer, 'createExpressOptionsListener').mockReturnValue(fakeListenerOptions);
+    jest
+      .spyOn(HTTPServerHelper, 'createExpressOptionsListener')
+      .mockReturnValue(fakeListenerOptions);
 
     const logger = { error: jest.fn() };
 
-    const server = HTTPServer.create({
+    const server = HTTPServerHelper.create({
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       schema,
@@ -397,7 +399,7 @@ describe('Server', () => {
     expect(fakeExpress.options).toHaveBeenCalledTimes(1);
     expect(fakeExpress.options).toHaveBeenNthCalledWith(1, '*', fakeListenerOptions);
 
-    expect(HTTPServer.createExpressServerListener).toHaveBeenCalledWith({
+    expect(HTTPServerHelper.createExpressServerListener).toHaveBeenCalledWith({
       schema,
       maxRequestBodyBytes: 100,
       allowedOrigin: 'test2',
@@ -408,21 +410,21 @@ describe('Server', () => {
     expect(fakeListenerPlayground).not.toHaveBeenCalled();
     expect(fakeListenerSchema).not.toHaveBeenCalled();
 
-    expect(HTTPServer.createExpressOptionsListener).toHaveBeenCalledWith({
+    expect(HTTPServerHelper.createExpressOptionsListener).toHaveBeenCalledWith({
       allowedOrigin: 'test2',
       maxAge: 300,
     });
-    expect(HTTPServer.createExpressServerListener).toHaveBeenCalledWith({
+    expect(HTTPServerHelper.createExpressServerListener).toHaveBeenCalledWith({
       schema,
       maxRequestBodyBytes: 100,
       allowedOrigin: 'test2',
     });
-    expect(HTTPServer.createExpressPlaygroundListener).toHaveBeenCalledWith({
+    expect(HTTPServerHelper.createExpressPlaygroundListener).toHaveBeenCalledWith({
       allowedOrigin: 'test2',
       schemaPath: '/schema',
       serverPath: '/path',
     });
-    expect(HTTPServer.createExpressSchemaListener).toHaveBeenCalledWith({
+    expect(HTTPServerHelper.createExpressSchemaListener).toHaveBeenCalledWith({
       schema,
       allowedOrigin: 'test2',
     });
@@ -442,29 +444,31 @@ describe('Server', () => {
       get: jest.fn(),
       options: jest.fn(),
     };
-    jest.spyOn(HTTPServer, 'createEmptyExpressServer').mockReturnValue(
+    jest.spyOn(HTTPServerHelper, 'createEmptyExpressServer').mockReturnValue(
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       fakeExpress,
     );
 
     const fakeListener = jest.fn();
-    jest.spyOn(HTTPServer, 'createExpressServerListener').mockReturnValue(fakeListener);
+    jest.spyOn(HTTPServerHelper, 'createExpressServerListener').mockReturnValue(fakeListener);
 
     const fakeListenerPlayground = jest.fn();
     jest
-      .spyOn(HTTPServer, 'createExpressPlaygroundListener')
+      .spyOn(HTTPServerHelper, 'createExpressPlaygroundListener')
       .mockReturnValue(fakeListenerPlayground);
 
     const fakeListenerSchema = jest.fn();
-    jest.spyOn(HTTPServer, 'createExpressSchemaListener').mockReturnValue(fakeListenerSchema);
+    jest.spyOn(HTTPServerHelper, 'createExpressSchemaListener').mockReturnValue(fakeListenerSchema);
 
     const fakeListenerOptions = jest.fn();
-    jest.spyOn(HTTPServer, 'createExpressOptionsListener').mockReturnValue(fakeListenerOptions);
+    jest
+      .spyOn(HTTPServerHelper, 'createExpressOptionsListener')
+      .mockReturnValue(fakeListenerOptions);
 
     const logger = { error: jest.fn() };
 
-    const server = HTTPServer.create({
+    const server = HTTPServerHelper.create({
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       schema,
@@ -481,7 +485,7 @@ describe('Server', () => {
     expect(fakeExpress.options).toHaveBeenCalledTimes(1);
     expect(fakeExpress.options).toHaveBeenNthCalledWith(1, '*', fakeListenerOptions);
 
-    expect(HTTPServer.createExpressServerListener).toHaveBeenCalledWith({
+    expect(HTTPServerHelper.createExpressServerListener).toHaveBeenCalledWith({
       schema,
       maxRequestBodyBytes: 1000000,
       allowedOrigin: '*',
@@ -492,21 +496,21 @@ describe('Server', () => {
     expect(fakeListenerPlayground).not.toHaveBeenCalled();
     expect(fakeListenerSchema).not.toHaveBeenCalled();
 
-    expect(HTTPServer.createExpressOptionsListener).toHaveBeenCalledWith({
+    expect(HTTPServerHelper.createExpressOptionsListener).toHaveBeenCalledWith({
       allowedOrigin: '*',
       maxAge: 604800,
     });
-    expect(HTTPServer.createExpressServerListener).toHaveBeenCalledWith({
+    expect(HTTPServerHelper.createExpressServerListener).toHaveBeenCalledWith({
       schema,
       maxRequestBodyBytes: 1000000,
       allowedOrigin: '*',
     });
-    expect(HTTPServer.createExpressPlaygroundListener).toHaveBeenCalledWith({
+    expect(HTTPServerHelper.createExpressPlaygroundListener).toHaveBeenCalledWith({
       allowedOrigin: '*',
       schemaPath: '/tws/schema',
       serverPath: '/tws',
     });
-    expect(HTTPServer.createExpressSchemaListener).toHaveBeenCalledWith({
+    expect(HTTPServerHelper.createExpressSchemaListener).toHaveBeenCalledWith({
       schema,
       allowedOrigin: '*',
     });

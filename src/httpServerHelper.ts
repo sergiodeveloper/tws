@@ -14,9 +14,10 @@ const DEFAULT_ACCESS_CONTROL_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 const ACCESS_CONTROL_HEADER = 'Access-Control-Allow-Origin';
 
 /**
- * Utilities for creating an HTTP server that can execute operations from a schema.
+ * Utilities for creating an HTTP server that can execute operations from a schema, serve
+ * the schema and the HTML playground.
  */
-export abstract class HTTPServer {
+export abstract class HTTPServerHelper {
   /**
    * Gets the body received in an HTTP request and returns it as a string.
    *
@@ -73,7 +74,7 @@ export abstract class HTTPServer {
       let body: string;
 
       try {
-        body = await HTTPServer.getRequestBody({
+        body = await HTTPServerHelper.getRequestBody({
           request,
           maxBodyBytes: options.maxRequestBodyBytes,
         });
@@ -210,13 +211,13 @@ export abstract class HTTPServer {
     playgroundPath?: string;
     schemaPath?: string;
   }): import('express').Express {
-    const app = HTTPServer.createEmptyExpressServer();
+    const app = HTTPServerHelper.createEmptyExpressServer();
 
     const allowedOriginString = options.allowedOrigin ?? '*';
 
     app.options(
       '*',
-      HTTPServer.createExpressOptionsListener({
+      HTTPServerHelper.createExpressOptionsListener({
         allowedOrigin: allowedOriginString,
         maxAge: options.accessControlMaxAgeSeconds ?? DEFAULT_ACCESS_CONTROL_MAX_AGE,
       }),
@@ -224,7 +225,7 @@ export abstract class HTTPServer {
 
     app.post(
       options.path ?? DEFAULT_SERVER_PATH,
-      HTTPServer.createExpressServerListener({
+      HTTPServerHelper.createExpressServerListener({
         schema: options.schema,
         maxRequestBodyBytes: options.maxRequestBodyBytes ?? DEFAULT_MAX_REQUEST_BODY_BYTES,
         allowedOrigin: allowedOriginString,
@@ -234,7 +235,7 @@ export abstract class HTTPServer {
     if (options.schema.enablePlayground) {
       app.get(
         options.playgroundPath ?? DEFAULT_PLAYGROUND_PATH,
-        HTTPServer.createExpressPlaygroundListener({
+        HTTPServerHelper.createExpressPlaygroundListener({
           allowedOrigin: allowedOriginString,
           schemaPath: options.schemaPath ?? DEFAULT_SCHEMA_PATH,
           serverPath: options.path ?? DEFAULT_SERVER_PATH,
@@ -245,7 +246,7 @@ export abstract class HTTPServer {
     if (options.schema.enableSchema) {
       app.get(
         options.schemaPath ?? DEFAULT_SCHEMA_PATH,
-        HTTPServer.createExpressSchemaListener({
+        HTTPServerHelper.createExpressSchemaListener({
           schema: options.schema,
           allowedOrigin: allowedOriginString,
         }),

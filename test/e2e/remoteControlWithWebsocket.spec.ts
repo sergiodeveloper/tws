@@ -1,4 +1,4 @@
-import { RemoteControl } from '../../src';
+import { RemoteControl, Schema } from '../../src';
 
 import { ServerProvider, waitFor } from './utils';
 
@@ -36,10 +36,13 @@ describe('remote control with websocket', () => {
       },
     });
 
+    const schema = new Schema({});
+
     const clientConnectSpy = jest.fn();
     const clientDisconnectSpy = jest.fn();
 
-    const server = await servers.createSimpleWebSocketServer({
+    const server = await servers.createTwsWebSocketServer({
+      schema,
       onClientConnected: (clientId, ws) => {
         clientConnectSpy();
         connectedClients.set(clientId, ws);
