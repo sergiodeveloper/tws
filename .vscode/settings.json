@@ -1,7 +1,7 @@
 {
   "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": "explicit"
+    "source.fixAll.eslint": "always"
   },
   "files.insertFinalNewline": true,
-  "jestrunner.jestCommand": "APP_ENV=local bun test --timeout 50"
+  "jestrunner.jestCommand": "NODE_OPTIONS=--enable-source-maps bun test --timeout 50"
 }

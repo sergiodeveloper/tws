@@ -1,5 +1,5 @@
 {
-  "version": "2.0.0",
+  "version": "2.0.1",
   "name": "@tws-js/server",
   "description": "Type-Safe Web Server Framework",
   "license": "MIT",
@@ -13,7 +13,7 @@
     "lint": "eslint src test --fix && npx tsc --noEmit",
     "lint-nofix": "eslint src test && npx tsc --noEmit",
     "build": "rm -rf dist && tsc",
-    "deploy": "npm run lint && npm test && npm run build && npm publish --access=public"
+    "deploy": "npm run lint-nofix && npm test && npm run build && npm publish --access=public"
   },
   "dependencies": {
     "@tws-js/common": "^1.0.0",
