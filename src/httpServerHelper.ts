@@ -1,9 +1,10 @@
 import type { OutputType, OutputTypeDefinition } from '@tws-js/common';
-import express from 'express';
 
 import type { EventMap, OperationMap, Schema } from './schema';
 import { SafeError } from './validation';
 import { Server } from './server';
+
+const express = require('express');
 
 const DEFAULT_MAX_REQUEST_BODY_BYTES = 1000000;
 const DEFAULT_SERVER_PATH = '/tws';
