@@ -59,12 +59,11 @@ const schema = new Schema({
   enablePlayground: true,
 });
 
-const server = HTTPServerHelper.create({
+HTTPServerHelper.create({
+  port: 3000,
   schema,
   path: '/tws',
 });
-
-server.listen(3000);
 ```
 
 Send a request to the server:

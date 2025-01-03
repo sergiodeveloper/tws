@@ -85,7 +85,7 @@ export const BOOLEAN_NEGATE_SCHEMA = new Schema({
   }),
 });
 
-async function freePortInRange(start: number, end: number): Promise<number> {
+async function getFreePort(start = 4000, end = 45000): Promise<number> {
   const randomPort = Math.floor(Math.random() * (end - start)) + start;
 
   const isAvailable = await new Promise((resolve) => {
@@ -97,29 +97,19 @@ async function freePortInRange(start: number, end: number): Promise<number> {
     server.listen(randomPort, () => server.close(() => resolve(true)));
   });
 
-  return isAvailable ? randomPort : freePortInRange(start, end);
+  return isAvailable ? randomPort : getFreePort(start, end);
 }
 
 export class ServerProvider {
   private servers: { stop: () => Promise<void> }[] = [];
 
   async createTwsHttpServer<T extends OperationMap, U extends EventMap>(
-    options: Parameters<typeof HTTPServerHelper.create<T, U>>[0],
+    options: Omit<Parameters<typeof HTTPServerHelper.create<T, U>>[0], 'port'>,
   ) {
-    const expressServer = HTTPServerHelper.create(options);
-
-    const port = await freePortInRange(4000, 45000);
-
-    const netServer = expressServer.listen(port);
-
-    await new Promise((resolve) => netServer.on('listening', resolve));
-
-    const server = {
-      stop: async () => {
-        await new Promise((resolve) => netServer.close(resolve));
-      },
-      url: `http://localhost:${port}`,
-    };
+    const server = await HTTPServerHelper.create({
+      ...options,
+      port: await getFreePort(),
+    });
 
     this.servers.push(server);
     return server;
@@ -130,10 +120,8 @@ export class ServerProvider {
     onClientConnected: (clientId: string, ws: import('ws').WebSocket) => void;
     onClientDisconnected: (clientId: string, ws: import('ws').WebSocket) => void;
   }) {
-    const port = await freePortInRange(4000, 45000);
-
     const server = WebSocketServerHelper.create({
-      port,
+      port: await getFreePort(),
       schema: options.schema,
       onClientConnected: options.onClientConnected,
       onClientDisconnected: options.onClientDisconnected,

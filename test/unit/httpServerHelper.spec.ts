@@ -347,7 +347,12 @@ describe('Server', () => {
       enableSchema: true,
     };
 
+    const fakeServer = {
+      on: jest.fn().mockImplementation((_, cb) => cb()),
+    };
+
     const fakeExpress = {
+      listen: jest.fn().mockReturnValue(fakeServer),
       post: jest.fn(),
       get: jest.fn(),
       options: jest.fn(),
@@ -376,7 +381,8 @@ describe('Server', () => {
 
     const logger = { error: jest.fn() };
 
-    const server = HTTPServerHelper.create({
+    const server = await HTTPServerHelper.create({
+      port: 2345,
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       schema,
@@ -390,7 +396,10 @@ describe('Server', () => {
       schemaPath: '/schema',
     });
 
-    expect(server).toBe(fakeExpress);
+    expect(server.url).toBe('http://localhost:2345');
+    expect(server.app).toBe(fakeExpress);
+    expect(server.server).toBe(fakeServer);
+    expect(server.stop).toBeInstanceOf(Function);
 
     expect(fakeExpress.post).toHaveBeenCalledWith('/path', fakeListener);
     expect(fakeExpress.get).toHaveBeenCalledTimes(2);
@@ -398,6 +407,7 @@ describe('Server', () => {
     expect(fakeExpress.get).toHaveBeenNthCalledWith(2, '/schema', fakeListenerSchema);
     expect(fakeExpress.options).toHaveBeenCalledTimes(1);
     expect(fakeExpress.options).toHaveBeenNthCalledWith(1, '*', fakeListenerOptions);
+    expect(fakeExpress.listen).toHaveBeenCalledWith(2345);
 
     expect(HTTPServerHelper.createExpressServerListener).toHaveBeenCalledWith({
       schema,
@@ -439,7 +449,12 @@ describe('Server', () => {
       enableSchema: true,
     };
 
+    const fakeServer = {
+      on: jest.fn().mockImplementation((_, cb) => cb()),
+    };
+
     const fakeExpress = {
+      listen: jest.fn().mockReturnValue(fakeServer),
       post: jest.fn(),
       get: jest.fn(),
       options: jest.fn(),
@@ -468,7 +483,8 @@ describe('Server', () => {
 
     const logger = { error: jest.fn() };
 
-    const server = HTTPServerHelper.create({
+    const server = await HTTPServerHelper.create({
+      port: 2345,
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       schema,
@@ -476,7 +492,10 @@ describe('Server', () => {
       enablePlayground: true,
     });
 
-    expect(server).toBe(fakeExpress);
+    expect(server.url).toBe('http://localhost:2345');
+    expect(server.app).toBe(fakeExpress);
+    expect(server.server).toBe(fakeServer);
+    expect(server.stop).toBeInstanceOf(Function);
 
     expect(fakeExpress.post).toHaveBeenCalledWith('/tws', fakeListener);
     expect(fakeExpress.get).toHaveBeenCalledTimes(2);
@@ -484,6 +503,8 @@ describe('Server', () => {
     expect(fakeExpress.get).toHaveBeenNthCalledWith(2, '/tws/schema', fakeListenerSchema);
     expect(fakeExpress.options).toHaveBeenCalledTimes(1);
     expect(fakeExpress.options).toHaveBeenNthCalledWith(1, '*', fakeListenerOptions);
+    expect(fakeExpress.listen).toHaveBeenCalledWith(2345);
+    expect(fakeServer.on).toHaveBeenCalledWith('listening', expect.any(Function));
 
     expect(HTTPServerHelper.createExpressServerListener).toHaveBeenCalledWith({
       schema,
