@@ -203,7 +203,8 @@ export abstract class HTTPServerHelper {
    * Creates an Express server with routes for processing operations, serving the
    * playground, and serving the schema.
    */
-  static create<T extends OperationMap, U extends EventMap>(options: {
+  static async create<T extends OperationMap, U extends EventMap>(options: {
+    port: number;
     schema: Schema<T, U>;
     maxRequestBodyBytes?: number;
     path?: string;
@@ -211,8 +212,8 @@ export abstract class HTTPServerHelper {
     accessControlMaxAgeSeconds?: number;
     playgroundPath?: string;
     schemaPath?: string;
-  }): import('express').Express {
-    const app = HTTPServerHelper.createEmptyExpressServer();
+  }) {
+    const app: import('express').Express = HTTPServerHelper.createEmptyExpressServer();
 
     const allowedOriginString = options.allowedOrigin ?? '*';
 
@@ -254,6 +255,15 @@ export abstract class HTTPServerHelper {
       );
     }
 
-    return app;
+    const netServer = app.listen(options.port);
+
+    await new Promise((resolve) => netServer.on('listening', resolve));
+
+    return {
+      url: `http://localhost:${options.port}`,
+      app,
+      server: netServer,
+      stop: async () => await new Promise((resolve) => netServer.close(resolve)),
+    };
   }
 }
